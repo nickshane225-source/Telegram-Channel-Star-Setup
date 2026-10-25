@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/button.html" as btn %}
+{% import "components/badge.html" as badge %}
+{% import "components/empty_state.html" as empty %}
+
+{% block title %}Trash - StarPost Manager{% endblock %}
+{% block header_title %}Trash Bin{% endblock %}
+{% block header_subtitle %}Manage soft-deleted posts, restore them to drafts, or permanently erase files{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    {% if posts and posts|length > 0 %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        {% for p in posts %}
+        <div class="bg-card border border-glass rounded-2xl overflow-hidden shadow-glass backdrop-blur-xl flex flex-col justify-between">
+            <div>
+                <div class="h-44 bg-black/40 overflow-hidden relative">
+                    {% if p.photos and p.photos|length > 0 %}
+                    <img src="/media-view/{{ p.photos[0].path | basename }}" class="w-full h-full object-cover filter grayscale opacity-75">
+                    {% else %}
+                    <div class="w-full h-full flex items-center justify-center text-dim text-2xl">📷</div>
+                    {% endif %}
+
+                    <div class="absolute top-3 left-3">
+                        {{ badge.render_badge("deleted", "In Trash") }}
+                    </div>
+                </div>
+
+                <div class="p-4">
+                    <h3 class="font-bold text-main text-sm truncate">{{ p.title }}</h3>
+                    <p class="text-xs text-dim mt-1">
+                        Deleted: {{ p.deleted_at.strftime('%b %d, %Y at %H:%M UTC') if p.deleted_at else 'Recently' }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="p-4 pt-0 flex items-center justify-between border-t border-glass pt-3">
+                <form action="/posts/{{ p.id }}/restore" method="post">
+                    <button type="submit" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white transition">
+                        ↺ Restore to Draft
+                    </button>
+                </form>
+
+                <form action="/posts/{{ p.id }}/permanent-delete" method="post"
+                      onsubmit="return confirm('Permanently delete this post and its image files from disk? This cannot be undone.');">
+                    <button type="submit" class="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white transition">
+                        ✕ Delete Permanently
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        {{ empty.render_empty_state("Trash is empty", "No deleted posts found in your trash bin.", "/posts", "Go to Posts Library") }}
+    {% endif %}
+
+</div>
+{% endblock %}

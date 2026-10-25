@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/stat_card.html" as stat %}
+{% import "components/badge.html" as badge %}
+{% import "components/empty_state.html" as empty %}
+
+{% block title %}Dashboard{% endblock %}
+{% block header_title %}Dashboard Home{% endblock %}
+{% block header_subtitle %}Overview of your channel's paid photos, schedules and Telegram Stars earnings{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Listener & Delivery Status Strip -->
+    <div class="flex items-center justify-between bg-card border border-glass rounded-2xl p-4 shadow-glass backdrop-blur-xl text-xs">
+        <div class="flex items-center gap-3">
+            <span class="w-3 h-3 rounded-full {% if bot_listener_status == 'running' %}bg-emerald-400 animate-pulse{% else %}bg-slate-500{% endif %}"></span>
+            <div>
+                <span class="font-bold text-main">Bot listener:</span>
+                <span class="{% if bot_listener_status == 'running' %}text-emerald-400 font-semibold{% else %}text-dim{% endif %}">
+                    {{ bot_listener_status|capitalize }}
+                </span>
+                <span class="text-dim text-[11px] ml-1">
+                    {% if bot_listener_status == 'running' %}
+                    — Mode B real-time updates and /start deep links active
+                    {% else %}
+                    — Mode B long-polling paused (Enable "Mode B: Bot Delivery" in Settings)
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        <a href="/settings" class="text-xs text-accent hover:underline">
+            Manage Settings →
+        </a>
+    </div>
+
+    <!-- KPI Metrics Grid -->
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        {{ stat.render_stat_card("Total Posts", counts.total, icon="📦") }}
+        {{ stat.render_stat_card("Published", counts.published, icon="🚀") }}
+        {{ stat.render_stat_card("Scheduled", counts.scheduled, icon="⏳") }}
+        {{ stat.render_stat_card("Drafts", counts.draft, icon="📝") }}
+        {{ stat.render_stat_card("Failed", counts.failed, icon="⚠️") }}
+        {{ stat.render_stat_card("Stars Today", stars_today ~ " ★", icon="✨", class="bg-gradient-to-br from-amber-500/10 to-transparent border-amber-500/20") }}
+        {{ stat.render_stat_card("Total Stars", total_stars ~ " ★", icon="⭐️", class="bg-gradient-to-br from-amber-500/15 to-transparent border-amber-500/30") }}
+    </div>
+
+    <!-- Main Analytics & Next Scheduled Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Chart.js Stars Earnings Analytics (2 Cols) -->
+        <div class="lg:col-span-2">
+            {% call card.render_card("Stars Earnings Trend", "Historical performance of purchased paid media") %}
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2 text-xs">
+                        <button type="button"
+                                id="btn-7d"
+                                onclick="loadChartData(7)"
+                                class="px-3 py-1.5 rounded-lg bg-primary text-white font-medium transition">
+                            7 Days
+                        </button>
+                        <button type="button"
+                                id="btn-30d"
+                                onclick="loadChartData(30)"
+                                class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dim transition">
+                            30 Days
+                        </button>
+                    </div>
+                    <div class="text-xs text-dim">
+                        Total Period: <span id="chart-total-stars" class="font-bold text-star">-- ★</span>
+                    </div>
+                </div>
+
+                <div class="relative h-64 sm:h-72 w-full">
+                    <canvas id="earningsChart"></canvas>
+                </div>
+            {% endcall %}
+        </div>
+
+        <!-- Next 5 Scheduled Posts (1 Col) -->
+        <div>
+            {% call card.render_card("Next Scheduled Posts", "Upcoming automated channel releases") %}
+                {% if next_scheduled and next_scheduled|length > 0 %}
+                <div class="divide-y divide-glass">
+                    {% for p in next_scheduled %}
+                    <div class="py-3 flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3 min-w-0">
+                            {% if p.photos and p.photos|length > 0 %}
+                            <div class="w-10 h-10 rounded-lg bg-black/40 overflow-hidden flex-shrink-0 border border-glass">
+                                <img src="/media-view/{{ p.photos[0].path | basename }}"
+                                     alt="Preview" class="w-full h-full object-cover">
+                            </div>
+                            {% else %}
+                            <div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-dim text-xs">
+                                📷
+                            </div>
+                            {% endif %}
+                            <div class="min-w-0">
+                                <a href="/posts/{{ p.id }}" class="text-sm font-semibold text-main hover:text-accent truncate block">
+                                    {{ p.title }}
+                                </a>
+                                <p class="text-xs text-dim mt-0.5">
+                                    {{ p.scheduled_at | to_timezone(current_timezone) if p.scheduled_at else 'TBD' }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right flex-shrink-0">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold text-star bg-amber-500/10 border border-amber-500/20">
+                                {{ p.star_count }} ★
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                    {{ empty.render_empty_state("No posts scheduled", "Queue up new posts to publish automatically.", "/posts/create", "Schedule a Post") }}
+                {% endif %}
+            {% endcall %}
+        </div>
+    </div>
+
+    <!-- Recent Activity Feed -->
+    <div>
+        {% call card.render_card("Recent Activity Log", "Real-time audit log of publishing actions and background tasks") %}
+            {% if recent_activity and recent_activity|length > 0 %}
+            <div class="divide-y divide-glass text-sm">
+                {% for act in recent_activity %}
+                <div class="py-3.5 flex items-start justify-between gap-4">
+                    <div class="flex items-start gap-3">
+                        <span class="text-base mt-0.5">
+                            {% if act.level == 'success' %}✅
+                            {% elif act.level == 'error' %}❌
+                            {% elif act.level == 'warning' %}⚠️
+                            {% else %}ℹ️{% endif %}
+                        </span>
+                        <div>
+                            <p class="font-medium text-main text-xs sm:text-sm">{{ act.details }}</p>
+                            <p class="text-[11px] text-dim/70 mt-0.5 uppercase tracking-wider font-mono">
+                                {{ act.action }}
+                            </p>
+                        </div>
+                    </div>
+                    <span class="text-xs text-dim font-mono whitespace-nowrap">
+                        {{ act.created_at.strftime('%H:%M:%S UTC') if act.created_at else '' }}
+                    </span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+                {{ empty.render_empty_state("No activity yet", "Recent publishing operations will appear here.") }}
+            {% endif %}
+        {% endcall %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let earningsChartInstance = null;
+
+async function loadChartData(days = 7) {
+    const btn7d = document.getElementById("btn-7d");
+    const btn30d = document.getElementById("btn-30d");
+
+    if (days === 7) {
+        btn7d.className = "px-3 py-1.5 rounded-lg bg-primary text-white font-medium transition";
+        btn30d.className = "px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dim transition";
+    } else {
+        btn30d.className = "px-3 py-1.5 rounded-lg bg-primary text-white font-medium transition";
+        btn7d.className = "px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-dim transition";
+    }
+
+    try {
+        const response = await fetch(`/api/stats/chart?days=${days}`);
+        const data = await response.json();
+
+        document.getElementById("chart-total-stars").innerText = `${data.total} ★`;
+
+        const ctx = document.getElementById("earningsChart").getContext("2d");
+        if (earningsChartInstance) {
+            earningsChartInstance.destroy();
+        }
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, "rgba(59, 130, 246, 0.4)");
+        gradient.addColorStop(1, "rgba(59, 130, 246, 0.0)");
+
+        earningsChartInstance = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: "Stars Earned",
+                    data: data.values,
+                    borderColor: "#3B82F6",
+                    borderWidth: 2.5,
+                    backgroundColor: gradient,
+                    fill: true,
+                    tension: 0.35,
+                    pointBackgroundColor: "#60A5FA",
+                    pointRadius: 3.5,
+                    pointHoverRadius: 6,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) { return ` ${ctx.parsed.y} Stars`; }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: "rgba(255, 255, 255, 0.04)" },
+                        ticks: { color: "#94A3B8", font: { size: 11 } }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: "rgba(255, 255, 255, 0.04)" },
+                        ticks: {
+                            color: "#94A3B8",
+                            font: { size: 11 },
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    } catch (err) {
+        console.error("Failed to load chart data:", err);
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadChartData(7);
+});
+</script>
+{% endblock %}

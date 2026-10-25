@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StarPost Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body class="bg-base text-main min-h-screen flex items-center justify-center p-6 antialiased">
+    <div class="max-w-md w-full bg-card border border-glass rounded-3xl p-8 shadow-2xl backdrop-blur-2xl">
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-star-gradient flex items-center justify-center text-white text-2xl font-bold shadow-xl shadow-amber-500/25 mb-4">
+                ★
+            </div>
+            <h1 class="text-2xl font-extrabold text-white tracking-tight">StarPost Manager</h1>
+            <p class="text-xs text-dim mt-1">Telegram Stars Paid-Media Publishing Studio</p>
+        </div>
+
+        {% if error %}
+        <div class="mb-6 p-4 rounded-xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2">
+            <span>✕</span>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/auth/login" method="post" class="space-y-4">
+            <input type="hidden" name="next" value="{{ next or '/' }}">
+
+            <div class="space-y-1.5">
+                <label for="username" class="block text-xs font-semibold uppercase tracking-wider text-dim">Username</label>
+                <input type="text" name="username" id="username" required autofocus
+                       class="w-full bg-input border border-glass rounded-xl px-4 py-3 text-sm text-white placeholder-dim/40 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition">
+            </div>
+
+            <div class="space-y-1.5">
+                <label for="password" class="block text-xs font-semibold uppercase tracking-wider text-dim">Password</label>
+                <input type="password" name="password" id="password" required
+                       class="w-full bg-input border border-glass rounded-xl px-4 py-3 text-sm text-white placeholder-dim/40 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition">
+            </div>
+
+            <button type="submit"
+                    class="w-full py-3 px-6 rounded-xl font-semibold text-sm bg-primary hover:bg-primary-hover text-white shadow-lg shadow-blue-500/25 transition duration-200 mt-2">
+                Sign In to Dashboard
+            </button>
+        </form>
+
+        <div class="mt-8 pt-6 border-t border-glass text-center text-xs text-dim">
+            <p>Admin credentials set in your local <code class="bg-white/10 px-1 py-0.5 rounded text-white font-mono">.env</code> file.</p>
+        </div>
+    </div>
+</body>
+</html>

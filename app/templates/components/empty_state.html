@@ -1,0 +1,22 @@
+{# Reusable Empty State Macro #}
+{% macro render_empty_state(title="No items found", description="", action_url=None, action_text=None, icon=None, class="") %}
+<div class="flex flex-col items-center justify-center text-center p-12 bg-card/40 border border-glass rounded-2xl {{ class }}">
+    <div class="w-16 h-16 mb-4 rounded-2xl bg-white/5 border border-glass flex items-center justify-center text-2xl text-dim">
+        {% if icon %}
+            {{ icon | safe }}
+        {% else %}
+            📭
+        {% endif %}
+    </div>
+    <h4 class="text-base font-semibold text-main mb-1">{{ title }}</h4>
+    {% if description %}
+    <p class="text-xs text-dim max-w-sm mb-6">{{ description }}</p>
+    {% endif %}
+    {% if action_url and action_text %}
+    <a href="{{ action_url }}"
+       class="inline-flex items-center px-4 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary-hover text-white shadow-lg transition duration-150">
+        {{ action_text }}
+    </a>
+    {% endif %}
+</div>
+{% endmacro %}

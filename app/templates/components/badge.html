@@ -1,0 +1,34 @@
+{# Reusable Status Badge Macro #}
+{% macro render_badge(status, text=None, class="") %}
+{% set s = status | lower %}
+{% if s == "published" %}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 {{ class }}">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        {{ text or "Published" }}
+    </span>
+{% elif s == "scheduled" %}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 {{ class }}">
+        <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+        {{ text or "Scheduled" }}
+    </span>
+{% elif s == "draft" %}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-500/15 text-slate-300 border border-slate-500/30 {{ class }}">
+        <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+        {{ text or "Draft" }}
+    </span>
+{% elif s == "failed" %}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/15 text-red-400 border border-red-500/30 {{ class }}">
+        <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+        {{ text or "Failed" }}
+    </span>
+{% elif s == "deleted" %}
+    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 {{ class }}">
+        <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+        {{ text or "Trash" }}
+    </span>
+{% else %}
+    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-white/10 text-dim border border-white/10 {{ class }}">
+        {{ text or status }}
+    </span>
+{% endif %}
+{% endmacro %}

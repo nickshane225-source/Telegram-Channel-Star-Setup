@@ -1,0 +1,17 @@
+{# Reusable Table Macro #}
+{% macro render_table(headers=[], class="") %}
+<div class="overflow-x-auto rounded-xl border border-glass {{ class }}">
+    <table class="w-full text-left text-sm text-dim">
+        <thead class="bg-surface/80 text-xs uppercase font-semibold text-dim border-b border-glass">
+            <tr>
+                {% for h in headers %}
+                <th scope="col" class="px-5 py-3.5">{{ h }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-glass bg-card/40">
+            {{ caller() }}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}

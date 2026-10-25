@@ -1,0 +1,45 @@
+{# Reusable Button Macro #}
+{% macro render_button(text, type="button", variant="primary", href=None, icon=None, hx_get=None, hx_post=None, hx_delete=None, hx_target=None, hx_swap=None, hx_confirm=None, onclick=None, class="", disabled=False, id=None) %}
+{% set base_classes = "inline-flex items-center justify-center font-medium rounded-xl text-sm px-4 py-2.5 transition duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" %}
+
+{% if variant == "primary" %}
+    {% set variant_classes = "bg-primary hover:bg-primary-hover text-white shadow-lg shadow-blue-500/20 focus:ring-blue-500" %}
+{% elif variant == "secondary" %}
+    {% set variant_classes = "bg-white/10 hover:bg-white/15 text-white border border-white/10 focus:ring-slate-400" %}
+{% elif variant == "danger" %}
+    {% set variant_classes = "bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20 focus:ring-red-500" %}
+{% elif variant == "warning" %}
+    {% set variant_classes = "bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/20 focus:ring-amber-500" %}
+{% elif variant == "ghost" %}
+    {% set variant_classes = "bg-transparent hover:bg-white/5 text-dim hover:text-white" %}
+{% elif variant == "star" %}
+    {% set variant_classes = "bg-star-gradient text-white shadow-lg shadow-amber-500/25 font-semibold" %}
+{% else %}
+    {% set variant_classes = "bg-white/10 hover:bg-white/15 text-white" %}
+{% endif %}
+
+{% if href %}
+<a href="{{ href }}"
+   {% if id %}id="{{ id }}"{% endif %}
+   class="{{ base_classes }} {{ variant_classes }} {{ class }}"
+   {% if onclick %}onclick="{{ onclick }}"{% endif %}>
+    {% if icon %}<span class="mr-2">{{ icon | safe }}</span>{% endif %}
+    {{ text }}
+</a>
+{% else %}
+<button type="{{ type }}"
+        {% if id %}id="{{ id }}"{% endif %}
+        class="{{ base_classes }} {{ variant_classes }} {{ class }}"
+        {% if disabled %}disabled{% endif %}
+        {% if onclick %}onclick="{{ onclick }}"{% endif %}
+        {% if hx_get %}hx-get="{{ hx_get }}"{% endif %}
+        {% if hx_post %}hx-post="{{ hx_post }}"{% endif %}
+        {% if hx_delete %}hx-delete="{{ hx_delete }}"{% endif %}
+        {% if hx_target %}hx-target="{{ hx_target }}"{% endif %}
+        {% if hx_swap %}hx-swap="{{ hx_swap }}"{% endif %}
+        {% if hx_confirm %}hx-confirm="{{ hx_confirm }}"{% endif %}>
+    {% if icon %}<span class="mr-2">{{ icon | safe }}</span>{% endif %}
+    {{ text }}
+</button>
+{% endif %}
+{% endmacro %}

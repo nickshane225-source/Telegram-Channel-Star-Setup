@@ -1,0 +1,204 @@
+/* ==========================================================================
+   StarPost Manager - Centralized Design Tokens & CSS Themes
+   Themes: Midnight (default dark), Neon (cyberpunk glow), Clean Light (crisp)
+   ========================================================================== */
+
+:root, [data-theme="midnight"] {
+    --bg-base: #090D16;
+    --bg-surface: #0F172A;
+    --bg-card: rgba(19, 29, 53, 0.75);
+    --bg-card-hover: rgba(28, 41, 71, 0.85);
+    --bg-input: rgba(15, 23, 42, 0.8);
+    --border-glass: rgba(255, 255, 255, 0.08);
+    --border-highlight: rgba(59, 130, 246, 0.35);
+
+    --text-main: #F8FAFC;
+    --text-dim: #94A3B8;
+    --text-muted: #64748B;
+
+    --accent-primary: #3B82F6;
+    --accent-hover: #2563EB;
+    --accent-glow: rgba(59, 130, 246, 0.3);
+    --accent-gradient: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);
+    --star-gold: #F59E0B;
+    --star-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+    --color-info: #06B6D4;
+
+    --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.45);
+    --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 25px rgba(59, 130, 246, 0.25);
+
+    --badge-locked-bg: rgba(245, 158, 11, 0.15);
+    --badge-locked-text: #F59E0B;
+    --badge-locked-border: rgba(245, 158, 11, 0.35);
+    --badge-bot-bg: rgba(99, 102, 241, 0.15);
+    --badge-bot-text: #818CF8;
+    --badge-bot-border: rgba(99, 102, 241, 0.35);
+    --card-locked-bg: #0F172A;
+
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 18px;
+    --radius-xl: 24px;
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+[data-theme="neon"] {
+    --bg-base: #060511;
+    --bg-surface: #0E0A24;
+    --bg-card: rgba(26, 17, 58, 0.75);
+    --bg-card-hover: rgba(38, 26, 82, 0.85);
+    --bg-input: rgba(14, 10, 36, 0.85);
+    --border-glass: rgba(168, 85, 247, 0.2);
+    --border-highlight: rgba(236, 72, 153, 0.4);
+
+    --text-main: #FAF5FF;
+    --text-dim: #C084FC;
+    --text-muted: #7E22CE;
+
+    --accent-primary: #A855F7;
+    --accent-hover: #9333EA;
+    --accent-glow: rgba(168, 85, 247, 0.4);
+    --accent-gradient: linear-gradient(135deg, #EC4899 0%, #8B5CF6 100%);
+    --star-gold: #FACC15;
+    --star-gradient: linear-gradient(135deg, #FACC15 0%, #F59E0B 100%);
+
+    --color-success: #06B6D4;
+    --color-warning: #F59E0B;
+    --color-danger: #F43F5E;
+    --color-info: #38BDF8;
+
+    --shadow-glass: 0 8px 32px 0 rgba(10, 5, 30, 0.7);
+    --shadow-card: 0 4px 25px -2px rgba(168, 85, 247, 0.25);
+    --shadow-glow: 0 0 35px rgba(168, 85, 247, 0.4);
+
+    --badge-locked-bg: rgba(250, 204, 21, 0.18);
+    --badge-locked-text: #FACC15;
+    --badge-locked-border: rgba(250, 204, 21, 0.4);
+    --badge-bot-bg: rgba(236, 72, 153, 0.18);
+    --badge-bot-text: #F472B6;
+    --badge-bot-border: rgba(236, 72, 153, 0.4);
+    --card-locked-bg: #0E0A24;
+}
+
+[data-theme="clean-light"] {
+    --bg-base: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-card: rgba(255, 255, 255, 0.95);
+    --bg-card-hover: rgba(241, 245, 249, 0.98);
+    --bg-input: #FFFFFF;
+    --border-glass: rgba(0, 0, 0, 0.08);
+    --border-highlight: rgba(37, 99, 235, 0.4);
+
+    --text-main: #0F172A;
+    --text-dim: #475569;
+    --text-muted: #94A3B8;
+
+    --accent-primary: #2563EB;
+    --accent-hover: #1D4ED8;
+    --accent-glow: rgba(37, 99, 235, 0.15);
+    --accent-gradient: linear-gradient(135deg, #2563EB 0%, #4F46E5 100%);
+    --star-gold: #D97706;
+    --star-gradient: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+
+    --color-success: #059669;
+    --color-warning: #D97706;
+    --color-danger: #DC2626;
+    --color-info: #0284C7;
+
+    --shadow-glass: 0 10px 25px -5px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 4px 15px -1px rgba(0, 0, 0, 0.08);
+    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.15);
+
+    --badge-locked-bg: rgba(217, 119, 6, 0.1);
+    --badge-locked-text: #B45309;
+    --badge-locked-border: rgba(217, 119, 6, 0.3);
+    --badge-bot-bg: rgba(79, 70, 229, 0.1);
+    --badge-bot-text: #4338CA;
+    --badge-bot-border: rgba(79, 70, 229, 0.3);
+    --card-locked-bg: #FFFFFF;
+}
+
+/* Glassmorphism & Surface Utilities */
+body {
+    background-color: var(--bg-base);
+    color: var(--text-main);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.bg-base { background-color: var(--bg-base); }
+.bg-surface { background-color: var(--bg-surface); }
+.bg-card { background-color: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.bg-card:hover { background-color: var(--bg-card-hover); }
+.bg-input { background-color: var(--bg-input); }
+
+.border-glass { border-color: var(--border-glass); }
+.border-highlight { border-color: var(--border-highlight); }
+
+.text-main { color: var(--text-main); }
+.text-dim { color: var(--text-dim); }
+.text-muted { color: var(--text-muted); }
+.text-accent { color: var(--accent-primary); }
+.text-star { color: var(--star-gold); }
+
+.bg-primary { background-color: var(--accent-primary); }
+.bg-primary-hover:hover { background-color: var(--accent-hover); }
+.bg-accent-gradient { background-image: var(--accent-gradient); }
+.bg-star-gradient { background-image: var(--star-gradient); }
+
+.shadow-glass { box-shadow: var(--shadow-glass); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+.shadow-card { box-shadow: var(--shadow-card); }
+
+.badge-locked {
+    background-color: var(--badge-locked-bg);
+    color: var(--badge-locked-text);
+    border: 1px solid var(--badge-locked-border);
+}
+.badge-bot {
+    background-color: var(--badge-bot-bg);
+    color: var(--badge-bot-text);
+    border: 1px solid var(--badge-bot-border);
+}
+
+/* Animation transitions */
+.smooth-all {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Telegram spoiler simulation */
+tg-spoiler, .tg-spoiler {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: transparent;
+    border-radius: 4px;
+    padding: 1px 4px;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+}
+tg-spoiler:hover, .tg-spoiler:hover {
+    background-color: transparent;
+    color: inherit;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-glass);
+    border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

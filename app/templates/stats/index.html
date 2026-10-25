@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/stat_card.html" as stat %}
+{% import "components/table.html" as table %}
+{% import "components/empty_state.html" as empty %}
+
+{% block title %}Sales & Stars Earnings{% endblock %}
+{% block header_title %}Sales & Stars Earnings{% endblock %}
+{% block header_subtitle %}Track Telegram Stars transactions, buyer records, and export CSV financials{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        {{ stat.render_stat_card("Total Stars Earned", total_stars ~ " ★", icon="⭐️", subtitle="Lifetime revenue from paid media") }}
+        {{ stat.render_stat_card("Earned Today", stars_today ~ " ★", icon="✨", subtitle="Purchases in current UTC day") }}
+        {{ stat.render_stat_card("Total Purchases", sales|length, icon="💳", subtitle="Recorded customer unlock transactions") }}
+    </div>
+
+    <!-- Actions & Sync Toolbar -->
+    <div class="bg-card border border-glass rounded-2xl p-4 shadow-glass backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div>
+            <h4 class="text-sm font-bold text-main">Telegram Bot Transactions Sync</h4>
+            <p class="text-xs text-dim">Automatic background sync runs every {{ sync_interval }} minutes</p>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <form action="/stats/sync" method="post">
+                <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                    🔄 Sync from Telegram Now
+                </button>
+            </form>
+
+            <a href="/stats/export.csv" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition">
+                📥 Export CSV
+            </a>
+        </div>
+    </div>
+
+    <!-- Sales Transactions Table -->
+    {% call card.render_card("Recent Star Transactions", "Purchases logged via getStarTransactions") %}
+        {% if sales and sales|length > 0 %}
+            {% call table.render_table(["Transaction ID", "Date (UTC)", "Buyer", "Amount", "Matched Post"]) %}
+                {% for s in sales %}
+                <tr class="hover:bg-white/5 transition">
+                    <td class="px-5 py-4 font-mono text-xs text-main">{{ s.transaction_id }}</td>
+                    <td class="px-5 py-4 text-xs text-dim">{{ s.date.strftime('%Y-%m-%d %H:%M:%S') if s.date else '' }}</td>
+                    <td class="px-5 py-4 text-xs font-medium text-main">{{ s.user_name or (s.user_id if s.user_id else 'Anonymous Buyer') }}</td>
+                    <td class="px-5 py-4 font-bold text-star text-xs">{{ s.star_amount }} ★</td>
+                    <td class="px-5 py-4 text-xs">
+                        {% if s.post_id %}
+                        <a href="/posts/{{ s.post_id }}" class="text-accent hover:underline">Post #{{ s.post_id[:8] }}</a>
+                        {% else %}
+                        <span class="text-dim/60">Direct Channel Media</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            {% endcall %}
+        {% else %}
+            {{ empty.render_empty_state("No sales transactions yet", "When Telegram users unlock your paid media, transactions will sync here automatically.") }}
+        {% endif %}
+    {% endcall %}
+
+</div>
+{% endblock %}

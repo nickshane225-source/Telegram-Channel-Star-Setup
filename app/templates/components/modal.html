@@ -1,0 +1,47 @@
+{# Reusable Modal Macro using Alpine.js #}
+{% macro render_modal(modal_id, title=None, max_width="max-w-lg") %}
+<div x-data="{ open: false }"
+     @open-modal-{{ modal_id }}.window="open = true"
+     @close-modal-{{ modal_id }}.window="open = false"
+     @keydown.escape.window="open = false"
+     class="relative z-50">
+
+    <div x-show="open"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-black/70 backdrop-blur-sm"
+         style="display: none;"
+         @click="open = false"></div>
+
+    <div x-show="open"
+         x-transition:enter="ease-out duration-200"
+         x-transition:enter-start="opacity-0 scale-95"
+         x-transition:enter-end="opacity-100 scale-100"
+         x-transition:leave="ease-in duration-150"
+         x-transition:leave-start="opacity-100 scale-100"
+         x-transition:leave-end="opacity-0 scale-95"
+         class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 sm:p-6"
+         style="display: none;">
+
+        <div class="bg-surface border border-glass rounded-2xl shadow-2xl w-full {{ max_width }} overflow-hidden p-6"
+             @click.stop>
+            {% if title %}
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-glass">
+                <h3 class="text-lg font-bold text-main">{{ title }}</h3>
+                <button type="button" @click="open = false" class="text-dim hover:text-white transition">
+                    ✕
+                </button>
+            </div>
+            {% endif %}
+
+            <div>
+                {{ caller() }}
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}

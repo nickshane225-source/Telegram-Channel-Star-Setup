@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/button.html" as btn %}
+{% import "components/form_field.html" as field %}
+
+{% block title %}Create Paid Post{% endblock %}
+{% block header_title %}Create Paid Post{% endblock %}
+{% block header_subtitle %}Craft and configure Telegram Stars paid photos, single drops or bulk batches{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto" x-data="{
+    bulkMode: false,
+    caption: '',
+    hiddenText: '',
+    hiddenMode: 'off',
+    cardStyle: 'blurred photo background',
+    showModeTooltip: false,
+    starPrice: {{ default_price or 50 }},
+    actionType: 'publish_now',
+    files: [],
+    presets: [10, 25, 50, 100, 250, 500, 1000],
+    previewHtml: '',
+    applyPreset(val) {
+        this.starPrice = val;
+    },
+    updatePreview() {
+        this.previewHtml = window.formatTelegramHtml ? window.formatTelegramHtml(this.caption) : this.caption;
+    },
+    handleFiles(event) {
+        const selected = Array.from(event.target.files);
+        if (!this.bulkMode && this.hiddenMode === 'card' && selected.length > 9) {
+            alert('Mode Card allows at most 9 photos so the locked text card can be appended as the 10th item.');
+            return;
+        }
+        if (!this.bulkMode && selected.length > 10) {
+            alert('Telegram Bot API supports a maximum of 10 photos per post. Use Bulk Mode for more.');
+            return;
+        }
+        this.files = selected.map(f => ({
+            name: f.name,
+            size: (f.size / (1024 * 1024)).toFixed(2) + ' MB',
+            url: URL.createObjectURL(f)
+        }));
+    },
+    applyTemplate(text, price) {
+        if (text) this.caption = text;
+        if (price) this.starPrice = price;
+        this.updatePreview();
+    }
+}" x-init="updatePreview()">
+
+    <!-- Form Container -->
+    <form action="/posts/create" method="post" enctype="multipart/form-data" class="space-y-6">
+
+        <!-- Top Mode Switcher -->
+        <div class="bg-card border border-glass rounded-2xl p-4 shadow-glass backdrop-blur-xl flex items-center justify-between">
+            <div>
+                <span class="text-sm font-bold text-main">Creation Mode</span>
+                <p class="text-xs text-dim">Toggle between a single curated post or bulk sequential auto-scheduling</p>
+            </div>
+            <div class="flex items-center gap-2 bg-black/30 p-1.5 rounded-xl border border-glass">
+                <button type="button"
+                        @click="bulkMode = false"
+                        :class="!bulkMode ? 'bg-primary text-white font-semibold shadow-md' : 'text-dim hover:text-white'"
+                        class="px-4 py-1.5 rounded-lg text-xs transition">
+                    Single Post (1-10 Photos)
+                </button>
+                <button type="button"
+                        @click="bulkMode = true"
+                        :class="bulkMode ? 'bg-primary text-white font-semibold shadow-md' : 'text-dim hover:text-white'"
+                        class="px-4 py-1.5 rounded-lg text-xs transition">
+                    Bulk Mode (Auto-Schedule)
+                </button>
+            </div>
+        </div>
+
+        <input type="hidden" name="is_bulk" :value="bulkMode ? 'true' : 'false'">
+
+        <!-- Main Form Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Left Form Fields (2 Cols) -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- Title & Templates Picker -->
+                {% call card.render_card("Post Details", "Basic identification and reusable templates") %}
+                    <div class="space-y-4">
+                        <div x-show="!bulkMode">
+                            {{ field.render_field("title", "Post Title", placeholder="e.g. Exclusive Sunset Set", required=True, id="post_title") }}
+                        </div>
+                        <div x-show="bulkMode" style="display: none;">
+                            {{ field.render_field("bulk_prefix", "Bulk Drop Name Prefix", value="Exclusive Drop", placeholder="Prefix for auto-generated titles") }}
+                        </div>
+
+                        <!-- Template Quick-Insert Dropdown -->
+                        {% if templates and templates|length > 0 %}
+                        <div class="pt-2">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-dim mb-1">Load from Template</label>
+                            <select onchange="const opt = this.options[this.selectedIndex]; if(opt.value){ $data.applyTemplate(opt.dataset.caption, opt.dataset.price); }"
+                                    class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                                <option value="">-- Choose a Saved Template --</option>
+                                {% for tmpl in templates %}
+                                <option value="{{ tmpl.id }}" data-caption="{{ tmpl.caption }}" data-price="{{ tmpl.star_count }}">
+                                    {{ tmpl.title }} ({{ tmpl.star_count }} Stars)
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endcall %}
+
+                <!-- Photo Upload Area -->
+                {% call card.render_card("Upload Photos", "Drag and drop 1 to 10 images (or unlimited in bulk mode)") %}
+                    <div class="border-2 border-dashed border-glass hover:border-accent/60 rounded-2xl p-8 text-center bg-black/20 transition cursor-pointer relative"
+                         @dragover.prevent
+                         @drop.prevent="$refs.fileInput.files = $event.dataTransfer.files; handleFiles({ target: $refs.fileInput })">
+                        <input type="file"
+                               name="photos"
+                               x-ref="fileInput"
+                               accept="image/jpeg,image/png,image/webp"
+                               multiple
+                               required
+                               @change="handleFiles($event)"
+                               class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
+
+                        <div class="space-y-2 pointer-events-none">
+                            <div class="w-12 h-12 mx-auto rounded-xl bg-white/5 border border-glass flex items-center justify-center text-2xl text-accent">
+                                📸
+                            </div>
+                            <p class="text-sm font-semibold text-main">
+                                Drag & drop images here or <span class="text-accent underline">browse</span>
+                            </p>
+                            <p class="text-xs text-dim">
+                                Supports JPG, PNG, WEBP. Max 10MB per photo. Automatically compressed for Telegram.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Thumbnails Preview List -->
+                    <div x-show="files.length > 0" class="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-3" style="display: none;">
+                        <template x-for="(f, i) in files" :key="i">
+                            <div class="relative rounded-xl overflow-hidden border border-glass bg-black/40 aspect-square group">
+                                <img :src="f.url" class="w-full h-full object-cover">
+                                <span class="absolute top-1 left-1 bg-black/70 text-[10px] text-white px-1.5 py-0.5 rounded font-mono" x-text="'#' + (i + 1)"></span>
+                                <span class="absolute bottom-1 right-1 bg-black/70 text-[9px] text-dim px-1 py-0.5 rounded" x-text="f.size"></span>
+                            </div>
+                        </template>
+                    </div>
+                {% endcall %}
+
+                <!-- Caption with Telegram HTML Toolbar -->
+                {% call card.render_card("Caption & HTML Formatting", "Craft formatting entities supported by Telegram") %}
+                    <!-- Formatting Buttons Toolbar -->
+                    <div class="flex flex-wrap items-center gap-1.5 mb-2 pb-2 border-b border-glass">
+                        <button type="button" onclick="insertTag('caption-input', '<b>', '</b>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white font-bold transition"><b>B</b></button>
+                        <button type="button" onclick="insertTag('caption-input', '<i>', '</i>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white italic transition"><i>I</i></button>
+                        <button type="button" onclick="insertTag('caption-input', '<s>', '</s>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white line-through transition"><s>S</s></button>
+                        <button type="button" onclick="insertTag('caption-input', '<u>', '</u>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white underline transition"><u>U</u></button>
+                        <button type="button" onclick="insertTag('caption-input', '<code>', '</code>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white font-mono transition">&lt;&gt;</button>
+                        <button type="button" onclick="insertTag('caption-input', '<tg-spoiler>', '</tg-spoiler>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white transition">Spoiler</button>
+                        <button type="button" onclick="const url = prompt('Link URL:'); if(url) insertTag('caption-input', `<a href='${url}'>`, '</a>')" class="px-2.5 py-1 rounded bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white transition">🔗 Link</button>
+                    </div>
+
+                    <textarea id="caption-input"
+                              name="caption"
+                              rows="5"
+                              x-model="caption"
+                              @input="updatePreview()"
+                              placeholder="Write an engaging caption for your channel..."
+                              class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition"></textarea>
+                    <p class="text-[11px] text-dim/70 mt-1 flex justify-between">
+                        <span>Telegram max caption limit is 1024 characters.</span>
+                        <span x-text="caption.length + ' / 1024'"></span>
+                    </p>
+                {% endcall %}
+
+                <!-- Hidden Text (Buyer Only) Card -->
+                {% call card.render_card("🔒 Hidden Text (Buyer Exclusive)", "Provide bonus text revealed only after paying Telegram Stars") %}
+                    <div class="space-y-4">
+                        <!-- Mode Selector & Help Toggle -->
+                        <div class="flex items-center justify-between pb-2 border-b border-glass">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-dim">Delivery Mode</label>
+                                <p class="text-[11px] text-dim">Select how the locked text is presented to buyers</p>
+                            </div>
+                            <button type="button"
+                                    @click="showModeTooltip = !showModeTooltip"
+                                    class="text-xs text-accent hover:underline flex items-center gap-1">
+                                <span>ℹ️ Mode Comparison</span>
+                            </button>
+                        </div>
+
+                        <!-- Mode Comparison Tooltip Banner -->
+                        <div x-show="showModeTooltip" x-transition class="bg-black/40 border border-accent/30 rounded-xl p-4 text-xs space-y-2 text-slate-300">
+                            <div class="font-bold text-accent text-sm mb-1">Mode A vs Mode B Quick Guide</div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="p-2.5 rounded-lg bg-white/5 border border-white/5">
+                                    <div class="font-bold text-amber-400 mb-1">🖼️ Mode A: Locked Text Card</div>
+                                    <ul class="list-disc list-inside space-y-1 text-[11px] text-dim">
+                                        <li><strong>How buyers see it:</strong> Text is auto-rendered on an image card appended to the channel album. Unlocks directly in Telegram.</li>
+                                        <li><strong>Where Stars go:</strong> Credited directly to the <em>Telegram Channel balance</em>.</li>
+                                        <li><strong>Limit:</strong> Up to 9 real photos + 1 card (10 media total).</li>
+                                        <li><strong>Editing:</strong> Requires 'Delete & Repost' flow if changed after publishing.</li>
+                                    </ul>
+                                </div>
+                                <div class="p-2.5 rounded-lg bg-white/5 border border-white/5">
+                                    <div class="font-bold text-indigo-400 mb-1">🤖 Mode B: Bot DM Delivery</div>
+                                    <ul class="list-disc list-inside space-y-1 text-[11px] text-dim">
+                                        <li><strong>How buyers see it:</strong> Channel sees blurred teaser with 'Unlock' link. Full media and text are delivered in bot DM.</li>
+                                        <li><strong>Where Stars go:</strong> Credited directly to the <em>Bot's balance</em>.</li>
+                                        <li><strong>Requires:</strong> StarPost Manager running on PC/server with Bot Listener enabled.</li>
+                                        <li><strong>Editing:</strong> Price and hidden text can be edited anytime without reposting!</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Mode Selection Radio Buttons -->
+                        <div class="grid grid-cols-3 gap-2">
+                            <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                                   :class="hiddenMode === 'off' ? 'bg-primary/20 border-accent text-white' : 'bg-black/20 text-dim hover:text-white'">
+                                <input type="radio" name="hidden_mode" value="off" x-model="hiddenMode" class="hidden">
+                                <span class="block text-xs font-bold">Off</span>
+                                <span class="block text-[10px] text-dim">No hidden text</span>
+                            </label>
+
+                            <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                                   :class="hiddenMode === 'card' ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-black/20 text-dim hover:text-white'">
+                                <input type="radio" name="hidden_mode" value="card" x-model="hiddenMode" class="hidden">
+                                <span class="block text-xs font-bold">🖼️ Mode A: Card</span>
+                                <span class="block text-[10px] text-dim">Locked image card</span>
+                            </label>
+
+                            <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                                   :class="hiddenMode === 'bot' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-black/20 text-dim hover:text-white'">
+                                <input type="radio" name="hidden_mode" value="bot" x-model="hiddenMode" class="hidden">
+                                <span class="block text-xs font-bold">🤖 Mode B: Bot</span>
+                                <span class="block text-[10px] text-dim">Direct DM text</span>
+                            </label>
+                        </div>
+
+                        <!-- Card Style Selector (Mode A Only) -->
+                        <div x-show="hiddenMode === 'card'" class="space-y-2 pt-2" style="display: none;">
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-dim">Card Visual Style</label>
+                            <select name="card_style" x-model="cardStyle"
+                                    class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                                <option value="blurred photo background">Blurred Photo Background (Darkened photo 1)</option>
+                                <option value="gradient">Modern Indigo Gradient</option>
+                                <option value="solid">Dark Solid Glass Card</option>
+                            </select>
+                        </div>
+
+                        <!-- Hidden Textarea (Modes A & B) -->
+                        <div x-show="hiddenMode !== 'off'" class="space-y-2 pt-2" style="display: none;">
+                            <div class="flex items-center justify-between">
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-dim">Hidden Text Content</label>
+                                <span class="text-[11px] text-dim font-mono" x-text="hiddenText.length + ' / 1000'"></span>
+                            </div>
+                            <textarea name="hidden_text"
+                                      rows="4"
+                                      maxlength="1000"
+                                      x-model="hiddenText"
+                                      placeholder="Secret access link, VIP message, code, or exclusive instructions visible only after purchase..."
+                                      class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent"></textarea>
+                            <p class="text-[10px] text-dim">Never included in public channel captions, teasers, or public activity feeds.</p>
+
+                            <!-- Live Two-Pane Preview -->
+                            <div class="mt-4 pt-3 border-t border-glass space-y-2">
+                                <span class="block text-[11px] font-bold uppercase tracking-wider text-dim">Live Hidden Text Preview</span>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <!-- Left: What buyers see -->
+                                    <div class="bg-black/40 border border-glass rounded-xl p-3 relative overflow-hidden">
+                                        <div class="text-[10px] uppercase font-bold text-emerald-400 mb-1 flex items-center gap-1">
+                                            <span>🔓 What buyers see</span>
+                                        </div>
+                                        <div class="text-xs text-slate-100 font-sans leading-relaxed break-words whitespace-pre-wrap min-h-[50px]"
+                                             x-text="hiddenText || '(Enter hidden text above to preview)'"></div>
+                                    </div>
+
+                                    <!-- Right: What non-buyers see -->
+                                    <div class="bg-black/40 border border-glass rounded-xl p-3 relative overflow-hidden">
+                                        <div class="text-[10px] uppercase font-bold text-amber-400 mb-1 flex items-center justify-between">
+                                            <span>🔒 What others see</span>
+                                            <span class="text-[9px] text-dim lowercase font-normal">(approx.)</span>
+                                        </div>
+                                        <div class="text-xs text-slate-100 font-sans leading-relaxed break-words whitespace-pre-wrap filter blur-[6px] select-none pointer-events-none min-h-[50px]"
+                                             x-text="hiddenText || 'Locked exclusive content hidden for buyers'"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endcall %}
+
+            </div>
+
+            <!-- Right Configuration & Preview (1 Col) -->
+            <div class="space-y-6">
+
+                <!-- Star Price Settings -->
+                {% call card.render_card("Telegram Star Price", "Amount of Stars buyers pay to unlock") %}
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <input type="number"
+                                   name="star_count"
+                                   min="1"
+                                   max="10000"
+                                   x-model="starPrice"
+                                   required
+                                   class="w-full bg-input border border-glass rounded-xl pl-4 pr-12 py-3 text-xl font-bold text-star focus:outline-none focus:border-amber-500">
+                            <span class="absolute right-4 top-3.5 text-star font-bold text-lg">★</span>
+                        </div>
+
+                        <!-- Preset Chips -->
+                        <div>
+                            <span class="block text-[11px] uppercase font-semibold text-dim mb-2">Quick Presets</span>
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="p in presets" :key="p">
+                                    <button type="button"
+                                            @click="applyPreset(p)"
+                                            :class="starPrice == p ? 'bg-amber-500 text-black font-bold' : 'bg-white/5 text-dim hover:text-white'"
+                                            class="px-2.5 py-1 rounded-lg text-xs transition"
+                                            x-text="p + ' ★'"></button>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                {% endcall %}
+
+                <!-- Publishing / Schedule Options -->
+                {% call card.render_card("Publishing Schedule", "When this post should be released") %}
+                    <div class="space-y-4">
+                        <!-- Single Mode Actions -->
+                        <div x-show="!bulkMode" class="space-y-3">
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-glass bg-white/5 cursor-pointer">
+                                <input type="radio" name="action_type" value="publish_now" x-model="actionType" class="text-primary focus:ring-0">
+                                <div>
+                                    <p class="text-xs font-bold text-main">Publish Immediately</p>
+                                    <p class="text-[11px] text-dim">Post directly to channel right away</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-glass bg-white/5 cursor-pointer">
+                                <input type="radio" name="action_type" value="schedule" x-model="actionType" class="text-primary focus:ring-0">
+                                <div>
+                                    <p class="text-xs font-bold text-main">Schedule for Later</p>
+                                    <p class="text-[11px] text-dim">Automatically post at a future date and time</p>
+                                </div>
+                            </label>
+
+                            <label class="flex items-center gap-3 p-3 rounded-xl border border-glass bg-white/5 cursor-pointer">
+                                <input type="radio" name="action_type" value="save_draft" x-model="actionType" class="text-primary focus:ring-0">
+                                <div>
+                                    <p class="text-xs font-bold text-main">Save as Draft</p>
+                                    <p class="text-[11px] text-dim">Keep unpublished in library</p>
+                                </div>
+                            </label>
+
+                            <!-- Date/Time Picker for Schedule -->
+                            <div x-show="actionType === 'schedule'" class="pt-2 space-y-2" style="display: none;">
+                                <label class="block text-xs font-semibold uppercase text-dim">Release Date & Time</label>
+                                <input type="datetime-local" name="scheduled_at"
+                                       class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                                <p class="text-[11px] text-dim">Times interpreted in {{ default_timezone or 'UTC' }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Bulk Mode Settings -->
+                        <div x-show="bulkMode" class="space-y-3" style="display: none;">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-dim mb-1">First Post Start Time</label>
+                                <input type="datetime-local" name="bulk_start_time"
+                                       class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase text-dim mb-1">Interval Between Posts (Hours)</label>
+                                <input type="number" name="bulk_interval_hours" step="0.5" min="0.5" max="72" value="3.0"
+                                       class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                                <p class="text-[11px] text-dim mt-1">e.g., 3.0 creates one post every 3 hours sequentially.</p>
+                            </div>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full py-3 px-6 rounded-xl font-bold text-sm bg-accent-gradient text-white shadow-xl shadow-blue-500/20 hover:opacity-95 transition duration-150">
+                            Confirm & Execute Post
+                        </button>
+                    </div>
+                {% endcall %}
+
+                <!-- Telegram Post Simulator Card -->
+                {% call card.render_card("Telegram Live Preview", "Simulated buyer preview with automatic blur") %}
+                    <div class="bg-[#17212B] border border-glass/60 rounded-2xl p-4 shadow-xl text-white font-sans text-xs max-w-sm mx-auto">
+                        <!-- Blurred Image Simulator -->
+                        <div class="relative h-44 rounded-xl overflow-hidden bg-black/60 flex items-center justify-center border border-white/10 mb-3">
+                            <template x-if="files.length > 0">
+                                <img :src="files[0].url" class="w-full h-full object-cover filter blur-md brightness-75 scale-105">
+                            </template>
+                            <template x-if="files.length === 0">
+                                <div class="text-dim text-center p-4">
+                                    <span class="text-2xl block mb-1">🔒</span>
+                                    <span>Upload photos to see preview</span>
+                                </div>
+                            </template>
+
+                            <!-- Telegram Stars Paid Media Overlay Badge -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-black/30">
+                                <div class="w-10 h-10 rounded-full bg-star-gradient flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-amber-500/40 mb-1">
+                                    ★
+                                </div>
+                                <span class="font-bold text-sm text-white" x-text="'Unlock for ' + starPrice + ' Stars'"></span>
+                                <span class="text-[10px] text-white/70">Tap to pay with Telegram Stars</span>
+                            </div>
+                        </div>
+
+                        <!-- Caption Preview -->
+                        <div class="text-slate-200 leading-relaxed break-words" x-html="previewHtml"></div>
+                    </div>
+                {% endcall %}
+
+            </div>
+
+        </div>
+
+    </form>
+</div>
+{% endblock %}

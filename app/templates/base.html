@@ -1,0 +1,199 @@
+{% import "components/toast.html" as toast %}
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ current_theme or 'midnight' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} - StarPost Manager</title>
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        base: "var(--bg-base)",
+                        surface: "var(--bg-surface)",
+                        card: "var(--bg-card)",
+                        main: "var(--text-main)",
+                        dim: "var(--text-dim)",
+                        muted: "var(--text-muted)",
+                        primary: "var(--accent-primary)",
+                        "primary-hover": "var(--accent-hover)",
+                        star: "var(--star-gold)",
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- HTMX (CDN) -->
+    <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <!-- Alpine.js (CDN) -->
+    <script defer src="https://unpkg.com/alpinejs@3.14.3/dist/cdn.min.js"></script>
+    <!-- Chart.js (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Custom Theme Tokens & Style -->
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <!-- App Client Logic -->
+    <script src="/static/js/app.js"></script>
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-base text-main min-h-screen flex flex-col md:flex-row antialiased selection:bg-blue-500 selection:text-white"
+      x-data="{ mobileMenuOpen: false }">
+
+    <!-- Mobile Header -->
+    <header class="md:hidden flex items-center justify-between p-4 bg-surface border-b border-glass sticky top-0 z-40">
+        <a href="/" class="flex items-center gap-2">
+            <span class="text-xl">⭐️</span>
+            <span class="font-bold text-main tracking-tight">StarPost</span>
+        </a>
+        <button @click="mobileMenuOpen = !mobileMenuOpen" class="p-2 rounded-xl bg-card border border-glass text-dim hover:text-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+            </svg>
+        </button>
+    </header>
+
+    <!-- Sidebar Navigation -->
+    <aside class="fixed inset-y-0 left-0 z-50 w-64 bg-surface/95 border-r border-glass p-5 flex flex-col justify-between transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static backdrop-blur-xl"
+           :class="mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'">
+
+        <div class="space-y-6">
+            <!-- App Brand -->
+            <div class="flex items-center justify-between">
+                <a href="/" class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-star-gradient flex items-center justify-center text-white font-bold shadow-lg shadow-amber-500/20">
+                        ★
+                    </div>
+                    <div>
+                        <h1 class="font-extrabold text-base tracking-tight text-white leading-tight">StarPost</h1>
+                        <p class="text-[10px] uppercase tracking-wider text-dim">Manager v1.0</p>
+                    </div>
+                </a>
+                <button @click="mobileMenuOpen = false" class="md:hidden text-dim hover:text-white">✕</button>
+            </div>
+
+            <!-- Quick Action: Create Post -->
+            <a href="/posts/create"
+               class="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-accent-gradient text-white shadow-lg shadow-blue-500/20 hover:opacity-95 transition">
+                <span>＋</span>
+                <span>New Paid Post</span>
+            </a>
+
+            <!-- Nav Links -->
+            <nav class="space-y-1 text-sm font-medium">
+                <a href="/" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'dashboard' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/posts" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'posts' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>🖼️</span>
+                    <span>Posts Library</span>
+                </a>
+                <a href="/schedule" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'schedule' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>📅</span>
+                    <span>Schedule Manager</span>
+                </a>
+                <a href="/stats" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'stats' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>💰</span>
+                    <span>Sales & Stars</span>
+                </a>
+                <a href="/buyers" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'buyers' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>👥</span>
+                    <span>Buyers</span>
+                </a>
+                <a href="/templates" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'templates' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>📝</span>
+                    <span>Templates</span>
+                </a>
+                <a href="/posts/trash" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'trash' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>🗑️</span>
+                    <span>Trash</span>
+                </a>
+                <a href="/settings" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition {% if active_page == 'settings' %}bg-primary text-white font-semibold shadow-md{% else %}text-dim hover:text-white hover:bg-white/5{% endif %}">
+                    <span>⚙️</span>
+                    <span>Settings</span>
+                </a>
+
+                <!-- Plugin Nav Items -->
+                {% if plugin_nav_items %}
+                <div class="pt-4 pb-1">
+                    <p class="px-3.5 text-[10px] font-bold uppercase tracking-wider text-dim/60">Extensions</p>
+                </div>
+                {% for item in plugin_nav_items %}
+                <a href="{{ item.url }}" class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-dim hover:text-white hover:bg-white/5 transition">
+                    <span>✨</span>
+                    <span>{{ item.label }}</span>
+                </a>
+                {% endfor %}
+                {% endif %}
+            </nav>
+        </div>
+
+        <!-- Sidebar Footer / Status & User -->
+        <div class="space-y-4 pt-4 border-t border-glass text-xs">
+            <!-- Theme selector -->
+            <div class="flex items-center justify-between text-dim">
+                <span>Theme:</span>
+                <div class="flex items-center gap-1.5 bg-black/20 p-1 rounded-lg border border-glass">
+                    <a href="/settings/set-theme?theme=midnight&redirect={{ request.url.path }}" title="Midnight"
+                       class="w-5 h-5 rounded-md bg-[#090D16] border border-blue-500/40 hover:scale-110 transition {% if current_theme == 'midnight' %}ring-2 ring-blue-500{% endif %}"></a>
+                    <a href="/settings/set-theme?theme=neon&redirect={{ request.url.path }}" title="Neon"
+                       class="w-5 h-5 rounded-md bg-[#1A113A] border border-purple-500/40 hover:scale-110 transition {% if current_theme == 'neon' %}ring-2 ring-purple-500{% endif %}"></a>
+                    <a href="/settings/set-theme?theme=clean-light&redirect={{ request.url.path }}" title="Clean Light"
+                       class="w-5 h-5 rounded-md bg-[#F8FAFC] border border-slate-300 hover:scale-110 transition {% if current_theme == 'clean-light' %}ring-2 ring-blue-500{% endif %}"></a>
+                </div>
+            </div>
+
+            <!-- User profile & Logout -->
+            <div class="flex items-center justify-between pt-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center font-bold text-xs text-white">
+                        {{ user.username[0]|upper if user else 'A' }}
+                    </div>
+                    <span class="font-medium text-main text-xs truncate max-w-[100px]">{{ user.username if user else 'Admin' }}</span>
+                </div>
+                <form action="/auth/logout" method="post">
+                    <button type="submit" class="text-dim hover:text-red-400 text-xs transition">Logout</button>
+                </form>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col min-w-0 overflow-y-auto">
+        <!-- Top App Bar -->
+        <header class="hidden md:flex items-center justify-between px-8 py-4 border-b border-glass bg-surface/50 backdrop-blur-md sticky top-0 z-30">
+            <div>
+                <h2 class="text-xl font-bold text-main tracking-tight">{% block header_title %}Overview{% endblock %}</h2>
+                <p class="text-xs text-dim">{% block header_subtitle %}Telegram Paid Media Automation Dashboard{% endblock %}</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Bot Listener Status Pill -->
+                <a href="/settings" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-glass text-xs hover:bg-white/10 transition" title="Mode B Background Worker">
+                    <span class="w-2 h-2 rounded-full {% if bot_listener_status == 'running' %}bg-emerald-400 animate-pulse{% else %}bg-slate-500{% endif %}"></span>
+                    <span class="text-dim">Bot listener:</span>
+                    <span class="{% if bot_listener_status == 'running' %}text-emerald-300 font-semibold{% else %}text-dim{% endif %}">{{ bot_listener_status }}</span>
+                </a>
+
+                <!-- Channel Status Pill -->
+                <a href="/settings" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-glass text-xs hover:bg-white/10 transition">
+                    <span class="w-2 h-2 rounded-full {% if telegram_configured %}bg-emerald-400{% else %}bg-amber-400{% endif %} animate-pulse"></span>
+                    <span class="text-dim">Channel:</span>
+                    <span class="text-white font-medium">{{ active_channel or 'Not configured' }}</span>
+                </a>
+            </div>
+        </header>
+
+        <!-- Page Body -->
+        <div class="p-4 sm:p-6 md:p-8 flex-1 max-w-7xl w-full mx-auto">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <!-- Global Toast Component -->
+    {{ toast.render_toast_container() }}
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

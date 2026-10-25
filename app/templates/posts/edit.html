@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/badge.html" as badge %}
+{% import "components/button.html" as btn %}
+{% import "components/modal.html" as modal %}
+{% import "components/form_field.html" as field %}
+
+{% block title %}Edit Post - {{ post.title }}{% endblock %}
+{% block header_title %}Edit Post{% endblock %}
+{% block header_subtitle %}Modify details or execute Telegram in-place sync{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6" x-data="{
+    hiddenText: '{{ post.hidden_text | replace('\\', '\\\\') | replace("'", "\\'") | replace('\n', '\\n') }}',
+    hiddenMode: '{{ post.hidden_mode }}',
+    cardStyle: '{{ post.card_style }}',
+    starCount: {{ post.star_count }},
+    showModeTooltip: false
+}">
+
+    <!-- Top Status Banner -->
+    <div class="flex items-center justify-between bg-card border border-glass rounded-2xl p-4 shadow-glass backdrop-blur-xl">
+        <div class="flex items-center gap-3">
+            {{ badge.render_badge(post.status.value) }}
+            {% if post.hidden_mode == 'card' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold badge-locked">
+                    <span>🔒</span><span>Card</span>
+                </span>
+            {% elif post.hidden_mode == 'bot' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold badge-bot">
+                    <span>🤖</span><span>Bot Text</span>
+                </span>
+            {% endif %}
+            <div>
+                <h3 class="font-bold text-main text-base">{{ post.title }}</h3>
+                <p class="text-xs text-dim">
+                    {% if post.is_published %}
+                        Published on Telegram (Message #{{ post.telegram_message_id }})
+                    {% elif post.status.value == 'scheduled' %}
+                        Scheduled for {{ post.scheduled_at | to_timezone(current_timezone) if post.scheduled_at else 'TBD' }}
+                    {% else %}
+                        Draft post
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="/posts/{{ post.id }}" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-dim hover:text-white transition">
+                View Details
+            </a>
+        </div>
+    </div>
+
+    {% if post.is_published %}
+
+        {% if post.hidden_mode == "bot" %}
+        <!-- Mode B Published Edit Notice -->
+        <div class="bg-indigo-500/10 border border-indigo-500/30 rounded-2xl p-5 backdrop-blur-xl space-y-2">
+            <div class="flex items-start gap-3">
+                <span class="text-xl">🤖</span>
+                <div>
+                    <h4 class="text-sm font-bold text-indigo-300">Mode B Live Editing Enabled</h4>
+                    <p class="text-xs text-indigo-200/80 leading-relaxed mt-1">
+                        In Bot Delivery mode, the <strong>Star price</strong> and <strong>Hidden text</strong> can be updated at any time without reposting!
+                        Whenever prospective buyers tap "Unlock" in your channel, the bot immediately quotes the latest price and delivers your updated text.
+                        Caption edits will also sync automatically to the channel message via <code class="bg-black/30 px-1 py-0.5 rounded font-mono">editMessageCaption</code>.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mode B In-Place Edit Form -->
+        <form action="/posts/{{ post.id }}/edit" method="post" class="space-y-6">
+            <input type="hidden" name="hidden_mode" value="bot">
+
+            {% call card.render_card("Live Post Settings", "Update price, title, or captions") %}
+                <div class="space-y-4">
+                    {{ field.render_field("title", "Post Title", value=post.title, required=True) }}
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-dim mb-1">Telegram Stars Price</label>
+                        <input type="number" name="star_count" min="1" max="10000" x-model="starCount" required
+                               class="w-full bg-input border border-glass rounded-xl px-4 py-2 text-sm text-star font-bold">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-dim mb-1">Public Channel Caption</label>
+                        <textarea id="caption-input" name="caption" rows="4" required
+                                  class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent">{{ post.caption }}</textarea>
+                    </div>
+                </div>
+            {% endcall %}
+
+            {% call card.render_card("🔒 Hidden Text Content", "Delivered directly by bot to verified buyers") %}
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-dim">Secret content delivered upon purchase</span>
+                        <span class="text-[11px] text-dim font-mono" x-text="hiddenText.length + ' / 1000'"></span>
+                    </div>
+                    <textarea name="hidden_text" rows="5" maxlength="1000" x-model="hiddenText"
+                              class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main focus:outline-none focus:border-accent"></textarea>
+
+                    <div class="bg-black/30 border border-glass rounded-xl p-3 mt-2">
+                        <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-1">🔓 Live Buyer Preview</span>
+                        <div class="text-xs text-slate-100 whitespace-pre-wrap" x-text="hiddenText || '(No hidden text)'"></div>
+                    </div>
+                </div>
+            {% endcall %}
+
+            <div class="flex items-center justify-between">
+                <a href="/posts/{{ post.id }}" class="text-xs text-dim hover:text-white">← Cancel</a>
+                <button type="submit"
+                        class="py-2.5 px-6 rounded-xl font-bold text-xs bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                    Save Updates (Apply Immediately)
+                </button>
+            </div>
+        </form>
+
+        {% else %}
+        <!-- Mode A / Standard Published Limitation Notice -->
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 backdrop-blur-xl space-y-3">
+            <div class="flex items-start gap-3">
+                <span class="text-xl">⚠️</span>
+                <div>
+                    <h4 class="text-sm font-bold text-amber-300">Telegram Bot API Limitation Notice</h4>
+                    <p class="text-xs text-amber-200/80 leading-relaxed mt-1">
+                        Telegram does not allow changing photo files, locked text cards, or Star prices on an already-published channel paid media post.
+                        Only the <strong>caption</strong> can be updated in-place via <code class="bg-black/30 px-1 py-0.5 rounded font-mono">editMessageCaption</code>.
+                        {% if post.hidden_mode == 'card' %}
+                        To edit the <strong>hidden text card</strong> or price, use the <strong>"Delete & Repost"</strong> flow below (the locked card will be automatically regenerated).
+                        {% else %}
+                        If you must change photos or price, use the <strong>"Delete & Repost"</strong> button below.
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Published Post: Edit Caption Form -->
+        {% call card.render_card("Edit Caption (In-Place Telegram Sync)", "Updates the live caption on Telegram instantly") %}
+            <form action="/posts/{{ post.id }}/edit-caption" method="post" class="space-y-4">
+                <div class="flex flex-wrap items-center gap-1.5 pb-2 border-b border-glass">
+                    <button type="button" onclick="insertTag('caption-input', '<b>', '</b>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white font-bold transition"><b>B</b></button>
+                    <button type="button" onclick="insertTag('caption-input', '<i>', '</i>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white italic transition"><i>I</i></button>
+                    <button type="button" onclick="insertTag('caption-input', '<s>', '</s>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white line-through transition"><s>S</s></button>
+                    <button type="button" onclick="insertTag('caption-input', '<u>', '</u>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white underline transition"><u>U</u></button>
+                    <button type="button" onclick="insertTag('caption-input', '<code>', '</code>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white font-mono transition">&lt;&gt;</button>
+                    <button type="button" onclick="insertTag('caption-input', '<tg-spoiler>', '</tg-spoiler>')" class="px-2.5 py-1 rounded bg-white/5 text-xs text-dim hover:text-white transition">Spoiler</button>
+                </div>
+
+                <textarea id="caption-input"
+                          name="caption"
+                          rows="6"
+                          required
+                          class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent">{{ post.caption }}</textarea>
+
+                <div class="flex items-center justify-between pt-2">
+                    <button type="submit"
+                            class="py-2.5 px-6 rounded-xl font-bold text-xs bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                        Save Caption Changes (Sync to Telegram)
+                    </button>
+
+                    <button type="button"
+                            @click="$dispatch('open-modal-repost')"
+                            class="py-2.5 px-4 rounded-xl font-semibold text-xs bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 transition">
+                        🔄 Delete & Repost Flow...
+                    </button>
+                </div>
+            </form>
+        {% endcall %}
+
+        <!-- Delete and Repost Modal -->
+        {% call modal.render_modal("repost", "Delete and Repost Flow") %}
+            <form action="/posts/{{ post.id }}/repost" method="post" enctype="multipart/form-data" class="space-y-4">
+                <p class="text-xs text-dim leading-relaxed">
+                    This operation deletes message #{{ post.telegram_message_id }} from channel {{ post.channel_id }}
+                    and sends a fresh post with your updated price, photos, and regenerated locked text card.
+                </p>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1">New Telegram Star Price</label>
+                    <input type="number" name="star_count" min="1" max="10000" value="{{ post.star_count }}" required
+                           class="w-full bg-input border border-glass rounded-xl px-4 py-2 text-sm text-star font-bold">
+                </div>
+
+                {% if post.hidden_mode == "card" %}
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1">Update Hidden Text (Regenerates Locked Card)</label>
+                    <textarea name="hidden_text" rows="3" maxlength="1000"
+                              class="w-full bg-input border border-glass rounded-xl p-3 text-xs text-main">{{ post.hidden_text }}</textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1">Card Visual Style</label>
+                    <select name="card_style" class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                        <option value="blurred photo background" {% if post.card_style == 'blurred photo background' %}selected{% endif %}>Blurred Photo Background</option>
+                        <option value="gradient" {% if post.card_style == 'gradient' %}selected{% endif %}>Modern Indigo Gradient</option>
+                        <option value="solid" {% if post.card_style == 'solid' %}selected{% endif %}>Dark Solid Glass Card</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1">Replace Photos (Optional)</label>
+                    <input type="file" name="photos" accept="image/*" multiple
+                           class="w-full text-xs text-dim file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer">
+                    <p class="text-[11px] text-dim mt-1">Leave empty to keep existing photos.</p>
+                </div>
+
+                <div class="pt-4 flex items-center justify-end gap-3 border-t border-glass">
+                    <button type="button" @click="open = false" class="px-4 py-2 rounded-xl text-xs text-dim hover:text-white">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white shadow-lg transition">
+                        Confirm: Delete & Repost Now
+                    </button>
+                </div>
+            </form>
+        {% endcall %}
+
+        {% endif %}
+
+    {% else %}
+    <!-- Draft or Scheduled Post: Full Edit Form -->
+    <form action="/posts/{{ post.id }}/edit" method="post" enctype="multipart/form-data" class="space-y-6">
+
+        {% call card.render_card("General Post Settings", "Configure title, pricing and schedule") %}
+            <div class="space-y-4">
+                {{ field.render_field("title", "Post Title", value=post.title, required=True) }}
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Telegram Stars Price</label>
+                        <input type="number" name="star_count" min="1" max="10000" value="{{ post.star_count }}" required
+                               class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm font-bold text-star">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Scheduled Release Time</label>
+                        <input type="datetime-local" name="scheduled_at"
+                               value="{{ post.scheduled_at | to_timezone(current_timezone, '%Y-%m-%dT%H:%M') if post.scheduled_at else '' }}"
+                               class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main">
+                        <p class="text-[11px] text-dim mt-1">Times interpreted in {{ current_timezone }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endcall %}
+
+        {% call card.render_card("Post Caption", "HTML formatting supported") %}
+            <div class="space-y-3">
+                <textarea name="caption" rows="5" required
+                          class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent">{{ post.caption }}</textarea>
+            </div>
+        {% endcall %}
+
+        <!-- Hidden Text Card for Draft/Scheduled -->
+        {% call card.render_card("🔒 Hidden Text (Buyer Exclusive Content)", "Configure bonus text and delivery mode") %}
+            <div class="space-y-4">
+                <!-- Mode Selector -->
+                <div class="grid grid-cols-3 gap-2">
+                    <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                           :class="hiddenMode === 'off' ? 'bg-primary/20 border-accent text-white' : 'bg-black/20 text-dim hover:text-white'">
+                        <input type="radio" name="hidden_mode" value="off" x-model="hiddenMode" class="hidden">
+                        <span class="block text-xs font-bold">Off</span>
+                        <span class="block text-[10px] text-dim">No hidden text</span>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                           :class="hiddenMode === 'card' ? 'bg-amber-500/20 border-amber-500 text-amber-300' : 'bg-black/20 text-dim hover:text-white'">
+                        <input type="radio" name="hidden_mode" value="card" x-model="hiddenMode" class="hidden">
+                        <span class="block text-xs font-bold">🖼️ Mode A: Card</span>
+                        <span class="block text-[10px] text-dim">Locked image card</span>
+                    </label>
+
+                    <label class="p-2.5 rounded-xl border border-glass cursor-pointer text-center transition"
+                           :class="hiddenMode === 'bot' ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300' : 'bg-black/20 text-dim hover:text-white'">
+                        <input type="radio" name="hidden_mode" value="bot" x-model="hiddenMode" class="hidden">
+                        <span class="block text-xs font-bold">🤖 Mode B: Bot</span>
+                        <span class="block text-[10px] text-dim">Direct DM text</span>
+                    </label>
+                </div>
+
+                <!-- Card Style (Mode A only) -->
+                <div x-show="hiddenMode === 'card'" class="space-y-2 pt-2" style="display: none;">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-dim">Card Visual Style</label>
+                    <select name="card_style" x-model="cardStyle"
+                            class="w-full bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main">
+                        <option value="blurred photo background">Blurred Photo Background</option>
+                        <option value="gradient">Modern Indigo Gradient</option>
+                        <option value="solid">Dark Solid Glass Card</option>
+                    </select>
+                </div>
+
+                <!-- Hidden Text Area -->
+                <div x-show="hiddenMode !== 'off'" class="space-y-2 pt-2" style="display: none;">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-dim">Hidden Text Content</label>
+                        <span class="text-[11px] text-dim font-mono" x-text="hiddenText.length + ' / 1000'"></span>
+                    </div>
+                    <textarea name="hidden_text" rows="4" maxlength="1000" x-model="hiddenText"
+                              class="w-full bg-input border border-glass rounded-xl p-3 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent"></textarea>
+
+                    <!-- Live Two-Pane Preview -->
+                    <div class="mt-4 pt-3 border-t border-glass space-y-2">
+                        <span class="block text-[11px] font-bold uppercase tracking-wider text-dim">Live Hidden Text Preview</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div class="bg-black/40 border border-glass rounded-xl p-3">
+                                <span class="text-[10px] uppercase font-bold text-emerald-400 block mb-1">🔓 What buyers see</span>
+                                <div class="text-xs text-slate-100 whitespace-pre-wrap min-h-[50px]" x-text="hiddenText || '(Enter text above)'"></div>
+                            </div>
+                            <div class="bg-black/40 border border-glass rounded-xl p-3">
+                                <span class="text-[10px] uppercase font-bold text-amber-400 block mb-1">🔒 What others see (approx.)</span>
+                                <div class="text-xs text-slate-100 whitespace-pre-wrap filter blur-[6px] select-none pointer-events-none min-h-[50px]" x-text="hiddenText || 'Locked content'"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endcall %}
+
+        {% call card.render_card("Photos in Post (" ~ post.real_photos|length ~ " photos)", "Current genuine photos (excluding locked cards)") %}
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-3 mb-4">
+                {% for p in post.real_photos %}
+                <div class="relative rounded-xl overflow-hidden border border-glass aspect-square bg-black/40">
+                    <img src="/media-view/{{ p.path | basename }}" class="w-full h-full object-cover">
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="pt-2 border-t border-glass">
+                <label class="block text-xs font-semibold uppercase text-dim mb-1">Add or Replace Photos</label>
+                <input type="file" name="photos" accept="image/*" multiple
+                       class="w-full text-xs text-dim file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer">
+            </div>
+        {% endcall %}
+
+        <div class="flex items-center justify-between">
+            <a href="/posts" class="text-xs text-dim hover:text-white">← Cancel</a>
+            <button type="submit"
+                    class="py-2.5 px-6 rounded-xl font-bold text-xs bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                Save Changes
+            </button>
+        </div>
+
+    </form>
+    {% endif %}
+
+</div>
+{% endblock %}

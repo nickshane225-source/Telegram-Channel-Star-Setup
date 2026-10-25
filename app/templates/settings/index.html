@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/badge.html" as badge %}
+{% import "components/button.html" as btn %}
+{% import "components/form_field.html" as field %}
+{% import "components/modal.html" as modal %}
+
+{% block title %}Settings - StarPost Manager{% endblock %}
+{% block header_title %}Application Settings{% endblock %}
+{% block header_subtitle %}Configure Telegram credentials, channel permissions, system defaults and feature flags{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-8" x-data="{
+    testingConnection: false,
+    diagnosticResult: null,
+    async testConnection() {
+        this.testingConnection = true;
+        this.diagnosticResult = null;
+        try {
+            const res = await fetch('/settings/test-connection');
+            this.diagnosticResult = await res.json();
+            $dispatch('open-modal-diagnostics');
+        } catch (e) {
+            alert('Failed to run diagnostic test: ' + e);
+        } finally {
+            this.testingConnection = false;
+        }
+    }
+}">
+
+    <!-- Security Warnings Banner (Fix #5) -->
+    {% if security_warnings and security_warnings|length > 0 %}
+    <div class="bg-red-500/15 border border-red-500/40 rounded-2xl p-5 shadow-glass backdrop-blur-xl space-y-2">
+        <div class="flex items-center gap-2 text-red-400 font-bold text-sm">
+            <span class="text-lg">⚠️</span>
+            <span>Security Advisories Detected</span>
+        </div>
+        <ul class="list-disc list-inside text-xs text-red-200/90 space-y-1">
+            {% for w in security_warnings %}
+            <li>{{ w }}</li>
+            {% endfor %}
+        </ul>
+        <p class="text-[11px] text-red-300/70 pt-1">
+            Please update your configuration in the <code class="font-mono bg-black/40 px-1 py-0.5 rounded">.env</code> file and restart the application.
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Bot Listener Status & Service Overview -->
+    <div class="bg-card border border-glass rounded-2xl p-5 shadow-glass backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <span class="w-3.5 h-3.5 rounded-full {% if bot_listener_running %}bg-emerald-400 animate-pulse{% else %}bg-slate-500{% endif %}"></span>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h3 class="font-bold text-main text-sm">Bot Listener Status:</h3>
+                    <span class="text-xs font-bold {% if bot_listener_running %}text-emerald-400{% else %}text-dim{% endif %}">
+                        {{ "running" if bot_listener_running else "stopped" }}
+                    </span>
+                </div>
+                <p class="text-xs text-dim mt-0.5">
+                    {% if bot_listener_running %}
+                    Active long-polling background worker (receives /start unlock commands and purchased_paid_media updates).
+                    {% else %}
+                    Stopped. Enable "Mode B: Bot Delivery" in Feature Flags below to activate private chat hidden text delivery.
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+        <form action="/settings/feature-flags/bot_delivery/toggle" method="post">
+            <button type="submit"
+                    class="px-4 py-2 rounded-xl text-xs font-semibold transition {% if bot_listener_running %}bg-red-600/20 text-red-300 hover:bg-red-600 hover:text-white border border-red-500/30{% else %}bg-emerald-600 hover:bg-emerald-700 text-white shadow-md{% endif %}">
+                {{ "Stop Listener" if bot_listener_running else "Start Bot Listener" }}
+            </button>
+        </form>
+    </div>
+
+    <!-- Mode A vs Mode B Architecture & Limitations Guide -->
+    {% call card.render_card("Hidden Text Delivery Modes: Architecture & Rules", "Essential Telegram facts for Mode A (Channel Card) and Mode B (Bot DM)") %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <div class="p-4 rounded-xl bg-white/5 border border-glass space-y-2">
+                <div class="flex items-center gap-2 font-bold text-amber-400 text-sm">
+                    <span>🖼️</span>
+                    <span>Mode A: Locked Text Card</span>
+                </div>
+                <ul class="space-y-1.5 text-dim leading-relaxed">
+                    <li>• <strong>Presentation:</strong> Hidden text is rendered as an image card appended as the last item of the channel paid media album. Telegram blurs all paid media for non-buyers.</li>
+                    <li>• <strong>Where Stars Go:</strong> Credited directly to the <em>Telegram Channel balance</em>.</li>
+                    <li>• <strong>Photo Limit:</strong> Up to 9 genuine photos + 1 text card (10 items maximum allowed by Telegram API).</li>
+                    <li>• <strong>Channel Limitation:</strong> Telegram sends no purchase webhook/notifications for channel paid media.</li>
+                    <li>• <strong>Editing:</strong> Modifying text or prices on a published post requires the <em>"Delete & Repost"</em> flow.</li>
+                </ul>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white/5 border border-glass space-y-2">
+                <div class="flex items-center gap-2 font-bold text-indigo-400 text-sm">
+                    <span>🤖</span>
+                    <span>Mode B: Bot DM Delivery</span>
+                </div>
+                <ul class="space-y-1.5 text-dim leading-relaxed">
+                    <li>• <strong>Presentation:</strong> Channel gets a blurred teaser with an "Unlock" link. Users tap the button to open a private chat with the bot, where paid media is sent.</li>
+                    <li>• <strong>Where Stars Go:</strong> Credited directly to the <em>Bot's balance</em>.</li>
+                    <li>• <strong>Private Delivery:</strong> Upon receiving <code class="font-mono bg-black/40 px-1 py-0.5 rounded">purchased_paid_media</code>, the bot delivers the real hidden text in a protected private message.</li>
+                    <li>• <strong>Hosting Requirement:</strong> Requires StarPost Manager running on your PC or server with the Bot Listener enabled.</li>
+                    <li>• <strong>Live Editing:</strong> Hidden text and prices are editable anytime without reposting!</li>
+                </ul>
+            </div>
+        </div>
+    {% endcall %}
+
+    <!-- Bot & Channel Connection Configuration -->
+    {% call card.render_card("Telegram Channel & Bot Credentials", "Connect your Bot token and target broadcast channel") %}
+        <form action="/settings/save" method="post" class="space-y-6">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1.5">
+                        Telegram Bot Token
+                    </label>
+                    <input type="password"
+                           name="bot_token"
+                           value="{{ settings.bot_token or '' }}"
+                           placeholder="{{ masked_bot_token }}"
+                           class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main placeholder-dim/40 focus:outline-none focus:border-accent font-mono">
+                    <p class="text-[11px] text-dim/70 mt-1">
+                        Token obtained from <a href="https://t.me/BotFather" target="_blank" class="text-accent underline">@BotFather</a>. Never logged or exposed.
+                    </p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1.5">
+                        Channel Username or ID
+                    </label>
+                    <input type="text"
+                           name="channel_id"
+                           value="{{ settings.channel_id or '' }}"
+                           placeholder="e.g., @mychannel or -1001234567890"
+                           required
+                           class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main placeholder-dim/40 focus:outline-none focus:border-accent font-mono">
+                    <p class="text-[11px] text-dim/70 mt-1">
+                        Bot must be added as an Administrator with post, edit, delete rights.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Diagnostics Action Button -->
+            <div class="pt-3 border-t border-glass flex items-center justify-between">
+                <button type="button"
+                        @click="testConnection()"
+                        :disabled="testingConnection"
+                        class="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md flex items-center gap-2 transition disabled:opacity-50">
+                    <span x-show="!testingConnection">🔌 Test Bot & Channel Connection</span>
+                    <span x-show="testingConnection" style="display:none;">Testing...</span>
+                </button>
+
+                <button type="submit" class="px-6 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                    Save Connection
+                </button>
+            </div>
+        </form>
+    {% endcall %}
+
+    <!-- System Preferences & Defaults -->
+    {% call card.render_card("Posting Defaults & Preferences", "Configure standard prices, caption footer, and timezone") %}
+        <form action="/settings/save" method="post" class="space-y-6">
+            <input type="hidden" name="bot_token" value="{{ settings.bot_token or '' }}">
+            <input type="hidden" name="channel_id" value="{{ settings.channel_id or '' }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Default Star Price</label>
+                    <input type="number" name="default_price" min="1" max="10000" value="{{ settings.default_price }}" required
+                           class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm font-bold text-star">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Default Timezone</label>
+                    <select name="timezone" class="w-full bg-input border border-glass rounded-xl px-3 py-2.5 text-sm text-main">
+                        <option value="UTC" {% if settings.timezone == 'UTC' %}selected{% endif %}>UTC</option>
+                        <option value="America/New_York" {% if settings.timezone == 'America/New_York' %}selected{% endif %}>America/New_York (EST/EDT)</option>
+                        <option value="America/Los_Angeles" {% if settings.timezone == 'America/Los_Angeles' %}selected{% endif %}>America/Los_Angeles (PST/PDT)</option>
+                        <option value="Europe/London" {% if settings.timezone == 'Europe/London' %}selected{% endif %}>Europe/London (GMT/BST)</option>
+                        <option value="Europe/Paris" {% if settings.timezone == 'Europe/Paris' %}selected{% endif %}>Europe/Paris (CET)</option>
+                        <option value="Asia/Tokyo" {% if settings.timezone == 'Asia/Tokyo' %}selected{% endif %}>Asia/Tokyo (JST)</option>
+                        <option value="Asia/Dubai" {% if settings.timezone == 'Asia/Dubai' %}selected{% endif %}>Asia/Dubai (GST)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Stars Sync Interval (Mins)</label>
+                    <input type="number" name="sync_interval_minutes" min="1" max="1440" value="{{ settings.sync_interval_minutes }}" required
+                           class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main">
+                </div>
+            </div>
+
+            <!-- Theme Selection Cards -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-dim mb-2">Theme Selection</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label class="border border-glass rounded-xl p-3 bg-card cursor-pointer hover:border-accent transition flex items-center gap-3">
+                        <input type="radio" name="theme" value="midnight" {% if settings.theme == 'midnight' %}checked{% endif %} class="text-primary focus:ring-0">
+                        <div>
+                            <span class="block text-xs font-bold text-white">Midnight (Default)</span>
+                            <span class="block text-[10px] text-dim">Deep dark slate & blue glow</span>
+                        </div>
+                    </label>
+
+                    <label class="border border-glass rounded-xl p-3 bg-card cursor-pointer hover:border-accent transition flex items-center gap-3">
+                        <input type="radio" name="theme" value="neon" {% if settings.theme == 'neon' %}checked{% endif %} class="text-primary focus:ring-0">
+                        <div>
+                            <span class="block text-xs font-bold text-purple-300">Neon</span>
+                            <span class="block text-[10px] text-dim">Cyberpunk violet & magenta glow</span>
+                        </div>
+                    </label>
+
+                    <label class="border border-glass rounded-xl p-3 bg-card cursor-pointer hover:border-accent transition flex items-center gap-3">
+                        <input type="radio" name="theme" value="clean-light" {% if settings.theme == 'clean-light' %}checked{% endif %} class="text-primary focus:ring-0">
+                        <div>
+                            <span class="block text-xs font-bold text-slate-300">Clean Light</span>
+                            <span class="block text-[10px] text-dim">Crisp high-contrast day theme</span>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Caption Footer -->
+            <div>
+                <label class="block text-xs font-semibold uppercase text-dim mb-1.5">Default Caption Footer</label>
+                <textarea name="default_caption_footer" rows="2" placeholder="e.g. ⭐️ Unlocks grant permanent full-res access."
+                          class="w-full bg-input border border-glass rounded-xl p-3 text-xs text-main placeholder-dim/40 focus:outline-none focus:border-accent">{{ settings.default_caption_footer }}</textarea>
+                <p class="text-[11px] text-dim/70 mt-1">Automatically appended to newly published captions if not already included.</p>
+            </div>
+
+            <div class="pt-3 border-t border-glass text-right">
+                <button type="submit" class="px-6 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                    Save Preferences
+                </button>
+            </div>
+        </form>
+    {% endcall %}
+
+    <!-- Feature Flags & Plugins Manager -->
+    {% call card.render_card("Feature Flags & Plugins", "Toggle dynamic capabilities without touching core code") %}
+        {% if feature_flags and feature_flags|length > 0 %}
+        <div class="divide-y divide-glass">
+            {% for flag in feature_flags %}
+            <div class="py-3 flex items-center justify-between">
+                <div>
+                    <h4 class="text-xs font-bold text-main">{{ flag.name }}</h4>
+                    <p class="text-[11px] text-dim mt-0.5">{{ flag.description }}</p>
+                    <code class="text-[10px] text-dim/60 font-mono">{{ flag.key }}</code>
+                </div>
+
+                <form action="/settings/feature-flags/{{ flag.key }}/toggle" method="post">
+                    <button type="submit"
+                            class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if flag.enabled %}bg-emerald-500/20 text-emerald-300 border border-emerald-500/30{% else %}bg-white/10 text-dim hover:text-white{% endif %}">
+                        {% if flag.enabled %}Enabled (Click to disable){% else %}Disabled (Click to enable){% endif %}
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+            <p class="text-xs text-dim">No feature flags registered yet.</p>
+        {% endif %}
+    {% endcall %}
+
+    <!-- Diagnostics Report Modal -->
+    <div x-data="{ open: false }"
+         @open-modal-diagnostics.window="open = true"
+         @keydown.escape.window="open = false"
+         class="relative z-50">
+        <div x-show="open" class="fixed inset-0 bg-black/70 backdrop-blur-sm" style="display:none;" @click="open = false"></div>
+        <div x-show="open" class="fixed inset-0 z-50 flex items-center justify-center p-4" style="display:none;">
+            <div class="bg-surface border border-glass rounded-2xl p-6 max-w-lg w-full shadow-2xl" @click.stop>
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-glass">
+                    <h3 class="text-base font-bold text-main">Connection Diagnostic Report</h3>
+                    <button type="button" @click="open = false" class="text-dim hover:text-white">✕</button>
+                </div>
+
+                <template x-if="diagnosticResult">
+                    <div class="space-y-4">
+                        <!-- Overall Status -->
+                        <div class="p-4 rounded-xl text-xs flex items-center gap-3"
+                             :class="diagnosticResult.ready_to_publish ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-200' : 'bg-amber-500/15 border border-amber-500/30 text-amber-200'">
+                            <span class="text-xl" x-text="diagnosticResult.ready_to_publish ? '✅' : '⚠️'"></span>
+                            <div>
+                                <p class="font-bold text-sm" x-text="diagnosticResult.ready_to_publish ? 'Ready to Publish Paid Media!' : 'Configuration Incomplete'"></p>
+                                <p class="text-xs opacity-80" x-text="diagnosticResult.ready_to_publish ? 'Bot is admin with all posting, editing and deletion permissions.' : 'Please review missing permissions below.'"></p>
+                            </div>
+                        </div>
+
+                        <!-- Check Breakdown -->
+                        <div class="space-y-2 text-xs">
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-black/20">
+                                <span class="text-dim">Bot Token:</span>
+                                <span class="font-bold" :class="diagnosticResult.token_valid ? 'text-emerald-400' : 'text-red-400'"
+                                      x-text="diagnosticResult.token_valid ? 'Valid (@' + diagnosticResult.bot_username + ')' : 'Invalid Token'"></span>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-black/20">
+                                <span class="text-dim">Channel Access:</span>
+                                <span class="font-bold" :class="diagnosticResult.channel_valid ? 'text-emerald-400' : 'text-red-400'"
+                                      x-text="diagnosticResult.channel_valid ? 'Reachable (' + diagnosticResult.status + ')' : 'Cannot Reach Channel'"></span>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-black/20">
+                                <span class="text-dim">Can Post Messages:</span>
+                                <span class="font-bold" :class="diagnosticResult.can_post_messages ? 'text-emerald-400' : 'text-red-400'"
+                                      x-text="diagnosticResult.can_post_messages ? 'Yes' : 'No'"></span>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-black/20">
+                                <span class="text-dim">Can Edit Messages:</span>
+                                <span class="font-bold" :class="diagnosticResult.can_edit_messages ? 'text-emerald-400' : 'text-red-400'"
+                                      x-text="diagnosticResult.can_edit_messages ? 'Yes' : 'No'"></span>
+                            </div>
+
+                            <div class="flex items-center justify-between p-2 rounded-lg bg-black/20">
+                                <span class="text-dim">Can Delete Messages:</span>
+                                <span class="font-bold" :class="diagnosticResult.can_delete_messages ? 'text-emerald-400' : 'text-red-400'"
+                                      x-text="diagnosticResult.can_delete_messages ? 'Yes' : 'No'"></span>
+                            </div>
+                        </div>
+
+                        <!-- Messages / Advice list -->
+                        <div class="bg-black/30 p-3 rounded-xl space-y-1">
+                            <template x-for="m in diagnosticResult.messages" :key="m">
+                                <p class="text-[11px] text-dim font-mono" x-text="'• ' + m"></p>
+                            </template>
+                        </div>
+                    </div>
+                </template>
+
+                <div class="pt-4 mt-4 border-t border-glass text-right">
+                    <button type="button" @click="open = false" class="px-5 py-2 rounded-xl text-xs font-semibold bg-white/10 text-white">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

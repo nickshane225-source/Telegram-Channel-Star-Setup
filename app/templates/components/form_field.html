@@ -1,0 +1,70 @@
+{# Reusable Form Input Fields Macro #}
+{% macro render_field(name, label, type="text", value="", placeholder="", required=False, help_text=None, error=None, class="", id=None, min=None, max=None, step=None) %}
+<div class="space-y-1.5 {{ class }}">
+    {% if label %}
+    <label for="{{ id or name }}" class="block text-xs font-semibold uppercase tracking-wider text-dim">
+        {{ label }} {% if required %}<span class="text-red-400">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <input type="{{ type }}"
+           name="{{ name }}"
+           id="{{ id or name }}"
+           value="{{ value }}"
+           placeholder="{{ placeholder }}"
+           {% if required %}required{% endif %}
+           {% if min is not none %}min="{{ min }}"{% endif %}
+           {% if max is not none %}max="{{ max }}"{% endif %}
+           {% if step is not none %}step="{{ step }}"{% endif %}
+           class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition">
+    {% if help_text %}
+    <p class="text-xs text-dim/80">{{ help_text }}</p>
+    {% endif %}
+    {% if error %}
+    <p class="text-xs text-red-400">{{ error }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_textarea(name, label, value="", rows=4, placeholder="", required=False, help_text=None, id=None, class="") %}
+<div class="space-y-1.5 {{ class }}">
+    {% if label %}
+    <label for="{{ id or name }}" class="block text-xs font-semibold uppercase tracking-wider text-dim">
+        {{ label }} {% if required %}<span class="text-red-400">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <textarea name="{{ name }}"
+              id="{{ id or name }}"
+              rows="{{ rows }}"
+              placeholder="{{ placeholder }}"
+              {% if required %}required{% endif %}
+              class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main placeholder-dim/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition">{{ value }}</textarea>
+    {% if help_text %}
+    <p class="text-xs text-dim/80">{{ help_text }}</p>
+    {% endif %}
+</div>
+{% endmacro %}
+
+{% macro render_select(name, label, options=[], selected="", required=False, help_text=None, id=None, class="") %}
+<div class="space-y-1.5 {{ class }}">
+    {% if label %}
+    <label for="{{ id or name }}" class="block text-xs font-semibold uppercase tracking-wider text-dim">
+        {{ label }} {% if required %}<span class="text-red-400">*</span>{% endif %}
+    </label>
+    {% endif %}
+    <select name="{{ name }}"
+            id="{{ id or name }}"
+            {% if required %}required{% endif %}
+            class="w-full bg-input border border-glass rounded-xl px-4 py-2.5 text-sm text-main focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition">
+        {% for opt in options %}
+            {% if opt is mapping %}
+                <option value="{{ opt.value }}" {% if opt.value == selected %}selected{% endif %}>{{ opt.label }}</option>
+            {% else %}
+                <option value="{{ opt }}" {% if opt == selected %}selected{% endif %}>{{ opt }}</option>
+            {% endif %}
+        {% endfor %}
+    </select>
+    {% if help_text %}
+    <p class="text-xs text-dim/80">{{ help_text }}</p>
+    {% endif %}
+</div>
+{% endmacro %}

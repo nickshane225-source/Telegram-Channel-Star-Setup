@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="midnight">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Required - StarPost Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/css/theme.css">
+</head>
+<body class="bg-base text-main min-h-screen flex items-center justify-center p-6 antialiased">
+    <div class="max-w-2xl w-full bg-card border border-glass rounded-3xl p-8 md:p-10 shadow-2xl backdrop-blur-2xl">
+        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mb-6 text-amber-400">
+            ⚠️
+        </div>
+
+        <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-3">
+            MongoDB Atlas Unreachable
+        </h1>
+        <p class="text-dim text-sm leading-relaxed mb-6">
+            StarPost Manager could not establish a connection to your MongoDB instance.
+            If you are using MongoDB Atlas, the most common reason is that your current public IP address
+            is not added to your Atlas IP Access List.
+        </p>
+
+        {% if error_details %}
+        <div class="bg-black/40 border border-red-500/30 rounded-xl p-4 mb-6">
+            <p class="text-xs font-mono text-red-400 break-words">{{ error_details }}</p>
+        </div>
+        {% endif %}
+
+        <div class="bg-surface/80 border border-glass rounded-2xl p-6 mb-8 space-y-4">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-white">How to fix this in MongoDB Atlas:</h2>
+            <ol class="space-y-3 text-xs md:text-sm text-dim list-decimal list-inside leading-relaxed">
+                <li>Log in to your <a href="https://cloud.mongodb.com" target="_blank" class="text-accent underline font-medium">MongoDB Atlas Console</a>.</li>
+                <li>In the left sidebar under <strong>Security</strong>, click <strong>Network Access</strong>.</li>
+                <li>Click the green <strong>"Add IP Address"</strong> button.</li>
+                <li>Choose <strong>"Add Current IP Address"</strong> (or select <em>"Allow Access From Anywhere (0.0.0.0/0)"</em> for testing).</li>
+                <li>Click <strong>Confirm</strong> and wait ~1 minute for Atlas to update your firewall rule.</li>
+                <li>Verify your <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">MONGODB_URI</code> in <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">.env</code> is formatted correctly.</li>
+            </ol>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center gap-4">
+            <a href="/"
+               class="w-full sm:w-auto text-center px-6 py-3 rounded-xl font-semibold text-sm bg-primary hover:bg-primary-hover text-white shadow-lg transition duration-200">
+                🔄 Retry Connection
+            </a>
+            <span class="text-xs text-dim">
+                Make sure your PC has an active internet connection.
+            </span>
+        </div>
+    </div>
+</body>
+</html>

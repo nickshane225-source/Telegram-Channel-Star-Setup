@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/badge.html" as badge %}
+{% import "components/button.html" as btn %}
+
+{% block title %}{{ post.title }} - Details{% endblock %}
+{% block header_title %}Post Details{% endblock %}
+{% block header_subtitle %}Full metadata, channel delivery status, and gallery{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header Actions Bar -->
+    <div class="bg-card border border-glass rounded-2xl p-5 shadow-glass backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            {{ badge.render_badge(post.status.value) }}
+            {% if post.hidden_mode == 'card' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold badge-locked">
+                    <span>🔒</span><span>Mode A (Card)</span>
+                </span>
+            {% elif post.hidden_mode == 'bot' %}
+                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold badge-bot">
+                    <span>🤖</span><span>Mode B (Bot)</span>
+                </span>
+            {% endif %}
+            <div>
+                <h2 class="text-xl font-bold text-main">{{ post.title }}</h2>
+                <p class="text-xs text-dim">Created on {{ post.created_at | to_timezone(current_timezone) }}</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            {% if post.status.value in ['draft', 'failed', 'scheduled'] %}
+            <form action="/posts/{{ post.id }}/publish" method="post">
+                <button type="submit" class="px-4 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-hover text-white shadow-lg transition">
+                    🚀 Publish Now
+                </button>
+            </form>
+            {% endif %}
+
+            <a href="/posts/{{ post.id }}/edit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition">
+                ✏️ Edit
+            </a>
+
+            <form action="/posts/{{ post.id }}/delete" method="post" onsubmit="return confirm('Move this post to trash?');">
+                <button type="submit" class="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600/20 hover:bg-red-600 text-red-300 hover:text-white transition">
+                    🗑️ Trash
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Error Banner if failed -->
+    {% if post.error %}
+    <div class="bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-xs text-red-300">
+        <div class="flex items-center gap-2 font-bold mb-1">
+            <span>⚠️</span>
+            <span>Delivery Failure Reason (Attempt {{ post.retry_count }}/3):</span>
+        </div>
+        <p class="font-mono bg-black/40 p-2.5 rounded-xl break-words">{{ post.error }}</p>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Photo Gallery & Captions (2 Cols) -->
+        <div class="lg:col-span-2 space-y-6">
+            {% call card.render_card("Media Gallery (" ~ post.real_photos|length ~ " Photos)", "Genuine photos uploaded with this post") %}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {% for p in post.real_photos %}
+                    <div class="rounded-xl overflow-hidden border border-glass bg-black/40 group relative aspect-[4/3]">
+                        <img src="/media-view/{{ p.path | basename }}"
+                             alt="{{ post.title }}"
+                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] text-white font-mono">
+                            {{ p.width }}x{{ p.height }} • {{ (p.size_bytes / (1024*1024))|round(2) if p.size_bytes else '' }}MB
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endcall %}
+
+            <!-- Public Caption Display (Sanitized without | safe) -->
+            {% call card.render_card("Public Channel Caption", "Visible to all channel subscribers") %}
+                <div class="bg-black/30 border border-glass rounded-xl p-4 text-sm leading-relaxed text-slate-200">
+                    {{ post.caption | sanitize_html }}
+                </div>
+            {% endcall %}
+
+            <!-- Hidden Content Admin View -->
+            {% if post.has_hidden_content %}
+            {% call card.render_card("🔒 Hidden Content (Buyers Only)", "Secret content revealed only after purchase via Telegram Stars") %}
+                <div class="space-y-3">
+                    <div class="flex items-center justify-between text-xs text-dim">
+                        <span>Mode: <strong class="text-white">{{ post.hidden_mode|upper }}</strong></span>
+                        {% if post.hidden_mode == 'card' %}
+                        <span>Style: <strong class="text-white">{{ post.card_style }}</strong></span>
+                        {% endif %}
+                    </div>
+                    <div class="bg-black/40 border border-glass rounded-xl p-4 text-xs font-mono text-emerald-300 whitespace-pre-wrap break-words">
+                        {{ post.hidden_text }}
+                    </div>
+                    <p class="text-[11px] text-dim">
+                        {% if post.hidden_mode == 'card' %}
+                        Delivered inside the channel as a locked photo card that Telegram reveals to paying users.
+                        {% else %}
+                        Delivered via private bot message with content protection enabled upon payment.
+                        {% endif %}
+                    </p>
+                </div>
+            {% endcall %}
+            {% endif %}
+        </div>
+
+        <!-- Post Metadata & Star Performance (1 Col) -->
+        <div class="space-y-6">
+            {% call card.render_card("Post Metadata", "Telegram IDs & Delivery Details") %}
+                <dl class="divide-y divide-glass text-xs">
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Price</dt>
+                        <dd class="font-bold text-star">{{ post.star_count }} Stars (★)</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Total Earned</dt>
+                        <dd class="font-bold text-star">{{ post.stars_earned }} Stars (★)</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between items-center">
+                        <dt class="text-dim">Buyers</dt>
+                        <dd class="font-bold text-accent">
+                            <a href="/buyers?post_id={{ post.id }}" class="hover:underline flex items-center gap-1">
+                                <span>{{ buyers_count or 0 }} Buyers</span>
+                                <span>→</span>
+                            </a>
+                        </dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Hidden Mode</dt>
+                        <dd class="font-mono text-main">{{ post.hidden_mode|upper }}</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Channel</dt>
+                        <dd class="font-mono text-main">{{ post.channel_id or 'Default' }}</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Message ID</dt>
+                        <dd class="font-mono text-main">{{ post.telegram_message_id or 'None' }}</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Published At</dt>
+                        <dd class="text-main">{{ post.published_at | to_timezone(current_timezone) if post.published_at else 'Not published' }}</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Scheduled At</dt>
+                        <dd class="text-main">{{ post.scheduled_at | to_timezone(current_timezone) if post.scheduled_at else 'None' }}</dd>
+                    </div>
+                    <div class="py-2.5 flex justify-between">
+                        <dt class="text-dim">Retries</dt>
+                        <dd class="text-main">{{ post.retry_count }}</dd>
+                    </div>
+                </dl>
+            {% endcall %}
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

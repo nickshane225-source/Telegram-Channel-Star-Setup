@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% import "components/card.html" as card %}
+{% import "components/badge.html" as badge %}
+{% import "components/button.html" as btn %}
+{% import "components/empty_state.html" as empty %}
+
+{% block title %}Buyers & Deliveries{% endblock %}
+{% block header_title %}Buyers & Deliveries{% endblock %}
+{% block header_subtitle %}Track Telegram Stars purchases and content delivered via Mode B Bot{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Toolbar -->
+    <div class="bg-card border border-glass rounded-2xl p-4 shadow-glass backdrop-blur-xl flex flex-col md:flex-row items-center justify-between gap-4">
+        <form method="get" action="/buyers" class="flex flex-wrap items-center gap-3 w-full md:w-auto flex-1">
+            <div class="relative flex-1 min-w-[220px] max-w-sm">
+                <input type="text" name="search" value="{{ search }}" placeholder="Search username or buyer ID..."
+                       class="w-full bg-input border border-glass rounded-xl pl-9 pr-4 py-2 text-xs text-main placeholder-dim/50 focus:outline-none focus:border-accent">
+                <span class="absolute left-3 top-2.5 text-dim text-xs">🔍</span>
+            </div>
+
+            <!-- Post Filter Dropdown -->
+            <select name="post_id" onchange="this.form.submit()"
+                    class="bg-input border border-glass rounded-xl px-3 py-2 text-xs text-main focus:outline-none focus:border-accent">
+                <option value="">All Mode B Posts</option>
+                {% for p in all_posts %}
+                <option value="{{ p.id }}" {% if post_id == p.id %}selected{% endif %}>
+                    {{ p.title }}
+                </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" class="px-3 py-2 bg-white/10 hover:bg-white/15 text-white rounded-xl text-xs font-medium transition">
+                Filter
+            </button>
+            {% if search or post_id %}
+            <a href="/buyers" class="text-xs text-dim hover:text-white transition">Reset</a>
+            {% endif %}
+        </form>
+
+        <div class="flex items-center gap-3">
+            <a href="/buyers/export{% if post_id %}?post_id={{ post_id }}{% endif %}"
+               class="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-glass shadow-md transition flex items-center gap-1.5">
+                <span>📥</span>
+                <span>Export CSV</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Active Filter Notice -->
+    {% if selected_post %}
+    <div class="flex items-center justify-between bg-primary/10 border border-primary/30 rounded-2xl px-5 py-3 text-xs">
+        <div class="flex items-center gap-2">
+            <span class="text-primary font-bold">Filtered by Post:</span>
+            <span class="text-white font-semibold">{{ selected_post.title }}</span>
+            <span class="text-dim">({{ selected_post.star_count }} Stars)</span>
+        </div>
+        <a href="/posts/{{ selected_post.id }}" class="text-accent underline hover:text-white transition">
+            View Post Details →
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Buyers Table -->
+    {% if purchases and purchases|length > 0 %}
+    <div class="bg-card border border-glass rounded-2xl overflow-hidden shadow-glass backdrop-blur-xl">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="border-b border-glass bg-white/5 text-dim uppercase tracking-wider font-semibold">
+                        <th class="py-3 px-4">Buyer User</th>
+                        <th class="py-3 px-4">Telegram ID</th>
+                        <th class="py-3 px-4">Post Title</th>
+                        <th class="py-3 px-4">Stars Paid</th>
+                        <th class="py-3 px-4">Delivered Date</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-glass/50">
+                    {% for item in purchases %}
+                    <tr class="hover:bg-white/5 transition">
+                        <td class="py-3 px-4">
+                            {% if item.username %}
+                            <a href="https://t.me/{{ item.username }}" target="_blank" rel="noopener noreferrer"
+                               class="font-semibold text-accent hover:underline flex items-center gap-1.5">
+                                <span>@{{ item.username }}</span>
+                                <span class="text-[10px] text-dim">↗</span>
+                            </a>
+                            {% else %}
+                            <span class="text-main font-semibold">Anonymous User</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 font-mono text-dim">
+                            {{ item.user_id }}
+                        </td>
+                        <td class="py-3 px-4">
+                            <a href="/posts/{{ item.post_id }}" class="font-medium text-main hover:text-accent transition truncate max-w-xs block">
+                                {{ post_map.get(item.post_id, item.post_id) }}
+                            </a>
+                        </td>
+                        <td class="py-3 px-4 font-bold text-star">
+                            ★ {{ item.stars }}
+                        </td>
+                        <td class="py-3 px-4 text-dim">
+                            {{ item.created_at | to_timezone(current_timezone) }}
+                        </td>
+                        <td class="py-3 px-4 text-right">
+                            <a href="/buyers?post_id={{ item.post_id }}" class="text-xs text-dim hover:text-white transition">
+                                Filter Post
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-center gap-2 pt-4">
+        {% if current_page > 1 %}
+        <a href="/buyers?page={{ current_page - 1 }}{% if post_id %}&post_id={{ post_id }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
+           class="px-3 py-1.5 rounded-xl bg-white/5 text-dim hover:text-white text-xs transition">
+            ← Previous
+        </a>
+        {% endif %}
+
+        <span class="text-xs text-dim px-2">Page {{ current_page }} of {{ total_pages }} ({{ total }} total buyers)</span>
+
+        {% if current_page < total_pages %}
+        <a href="/buyers?page={{ current_page + 1 }}{% if post_id %}&post_id={{ post_id }}{% endif %}{% if search %}&search={{ search }}{% endif %}"
+           class="px-3 py-1.5 rounded-xl bg-white/5 text-dim hover:text-white text-xs transition">
+            Next →
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="bg-card border border-glass rounded-2xl p-12 text-center shadow-glass backdrop-blur-xl">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-white/5 flex items-center justify-center text-3xl mb-3">
+            👥
+        </div>
+        <h3 class="text-base font-bold text-main mb-1">No buyers recorded yet</h3>
+        <p class="text-xs text-dim max-w-md mx-auto mb-6">
+            When users click the "Unlock" button on Mode B posts, pay with Telegram Stars in the bot, and receive their hidden text, their purchases will be logged here in real time.
+        </p>
+        <div class="flex items-center justify-center gap-3">
+            <a href="/posts/create" class="px-4 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary-hover text-white transition">
+                Create Mode B Post
+            </a>
+            <a href="/settings" class="px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white transition">
+                Check Bot Listener
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
