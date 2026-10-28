@@ -29,18 +29,28 @@
     handleFiles(event) {
         const selected = Array.from(event.target.files);
         if (!this.bulkMode && this.hiddenMode === 'card' && selected.length > 9) {
-            alert('Mode Card allows at most 9 photos so the locked text card can be appended as the 10th item.');
+            alert('Mode Card allows at most 9 items so the locked text card can be appended as the 10th item.');
             return;
         }
         if (!this.bulkMode && selected.length > 10) {
-            alert('Telegram Bot API supports a maximum of 10 photos per post. Use Bulk Mode for more.');
+            alert('Telegram Bot API supports a maximum of 10 media items per post. Use Bulk Mode for more.');
             return;
         }
-        this.files = selected.map(f => ({
-            name: f.name,
-            size: (f.size / (1024 * 1024)).toFixed(2) + ' MB',
-            url: URL.createObjectURL(f)
-        }));
+        this.files = selected.map(f => {
+            const ext = (f.name.split('.').pop() || '').toLowerCase();
+            const isDoc = ['pdf', 'doc', 'docx', 'txt'].includes(ext);
+            let icon = '📸';
+            if (ext === 'pdf') icon = '📄';
+            else if (['doc', 'docx'].includes(ext)) icon = '📝';
+            else if (ext === 'txt') icon = '📃';
+            return {
+                name: f.name,
+                size: (f.size / (1024 * 1024)).toFixed(2) + ' MB',
+                isDoc: isDoc,
+                icon: icon,
+                url: isDoc ? '' : URL.createObjectURL(f)
+            };
+        });
     },
     applyTemplate(text, price) {
         if (text) this.caption = text;
@@ -110,15 +120,15 @@
                     </div>
                 {% endcall %}
 
-                <!-- Photo Upload Area -->
-                {% call card.render_card("Upload Photos", "Drag and drop 1 to 10 images (or unlimited in bulk mode)") %}
+                <!-- Photo & Document Upload Area -->
+                {% call card.render_card("Upload Photos & Documents", "Drag and drop images, PDF, Word, or text files (1 to 10 items or unlimited in bulk mode)") %}
                     <div class="border-2 border-dashed border-glass hover:border-accent/60 rounded-2xl p-8 text-center bg-black/20 transition cursor-pointer relative"
                          @dragover.prevent
                          @drop.prevent="$refs.fileInput.files = $event.dataTransfer.files; handleFiles({ target: $refs.fileInput })">
                         <input type="file"
                                name="photos"
                                x-ref="fileInput"
-                               accept="image/jpeg,image/png,image/webp"
+                               accept="image/jpeg,image/png,image/webp,application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/msword,.doc,text/plain,.txt"
                                multiple
                                required
                                @change="handleFiles($event)"
@@ -129,10 +139,10 @@
                                 📸
                             </div>
                             <p class="text-sm font-semibold text-main">
-                                Drag & drop images here or <span class="text-accent underline">browse</span>
+                                Drag & drop images, PDF, Word, or text files here or <span class="text-accent underline">browse</span>
                             </p>
                             <p class="text-xs text-dim">
-                                Supports JPG, PNG, WEBP. Max 10MB per photo. Automatically compressed for Telegram.
+                                Supports JPG, PNG, WEBP, PDF, Word (.docx/.doc), TXT. Documents are automatically converted into Telegram slides.
                             </p>
                         </div>
                     </div>
@@ -140,10 +150,18 @@
                     <!-- Thumbnails Preview List -->
                     <div x-show="files.length > 0" class="mt-4 grid grid-cols-3 sm:grid-cols-5 gap-3" style="display: none;">
                         <template x-for="(f, i) in files" :key="i">
-                            <div class="relative rounded-xl overflow-hidden border border-glass bg-black/40 aspect-square group">
-                                <img :src="f.url" class="w-full h-full object-cover">
-                                <span class="absolute top-1 left-1 bg-black/70 text-[10px] text-white px-1.5 py-0.5 rounded font-mono" x-text="'#' + (i + 1)"></span>
-                                <span class="absolute bottom-1 right-1 bg-black/70 text-[9px] text-dim px-1 py-0.5 rounded" x-text="f.size"></span>
+                            <div class="relative rounded-xl overflow-hidden border border-glass bg-black/40 aspect-square group flex flex-col items-center justify-center p-2 text-center">
+                                <template x-if="!f.isDoc">
+                                    <img :src="f.url" class="w-full h-full object-cover absolute inset-0">
+                                </template>
+                                <template x-if="f.isDoc">
+                                    <div class="flex flex-col items-center justify-center z-10 space-y-1">
+                                        <span class="text-3xl" x-text="f.icon"></span>
+                                        <span class="text-[10px] text-white/90 truncate max-w-[85px] block font-mono" x-text="f.name"></span>
+                                    </div>
+                                </template>
+                                <span class="absolute top-1 left-1 bg-black/70 text-[10px] text-white px-1.5 py-0.5 rounded font-mono z-20" x-text="'#' + (i + 1)"></span>
+                                <span class="absolute bottom-1 right-1 bg-black/70 text-[9px] text-dim px-1 py-0.5 rounded z-20" x-text="f.size"></span>
                             </div>
                         </template>
                     </div>
@@ -393,13 +411,19 @@
                     <div class="bg-[#17212B] border border-glass/60 rounded-2xl p-4 shadow-xl text-white font-sans text-xs max-w-sm mx-auto">
                         <!-- Blurred Image Simulator -->
                         <div class="relative h-44 rounded-xl overflow-hidden bg-black/60 flex items-center justify-center border border-white/10 mb-3">
-                            <template x-if="files.length > 0">
+                            <template x-if="files.length > 0 && !files[0].isDoc">
                                 <img :src="files[0].url" class="w-full h-full object-cover filter blur-md brightness-75 scale-105">
+                            </template>
+                            <template x-if="files.length > 0 && files[0].isDoc">
+                                <div class="flex flex-col items-center justify-center p-4 text-center">
+                                    <span class="text-3xl mb-1" x-text="files[0].icon"></span>
+                                    <span class="text-xs text-white/80 font-mono truncate max-w-[160px]" x-text="files[0].name"></span>
+                                </div>
                             </template>
                             <template x-if="files.length === 0">
                                 <div class="text-dim text-center p-4">
                                     <span class="text-2xl block mb-1">🔒</span>
-                                    <span>Upload photos to see preview</span>
+                                    <span>Upload media or documents to see preview</span>
                                 </div>
                             </template>
 

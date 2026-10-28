@@ -9,46 +9,134 @@
 </head>
 <body class="bg-base text-main min-h-screen flex items-center justify-center p-6 antialiased">
     <div class="max-w-2xl w-full bg-card border border-glass rounded-3xl p-8 md:p-10 shadow-2xl backdrop-blur-2xl">
-        <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl mb-6 text-amber-400">
-            ⚠️
+        <div class="flex items-center justify-between mb-6">
+            <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl text-amber-400">
+                ⚠️
+            </div>
+            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 font-semibold">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                DB: reconnecting
+            </span>
         </div>
 
         <h1 class="text-2xl md:text-3xl font-extrabold text-white tracking-tight mb-3">
             MongoDB Atlas Unreachable
         </h1>
         <p class="text-dim text-sm leading-relaxed mb-6">
-            StarPost Manager could not establish a connection to your MongoDB instance.
-            If you are using MongoDB Atlas, the most common reason is that your current public IP address
-            is not added to your Atlas IP Access List.
+            StarPost Manager is running in degraded mode because it could not establish a connection to your MongoDB database.
+            Background auto-reconnect is active and will automatically start all services as soon as the database is reachable.
         </p>
 
-        {% if error_details %}
-        <div class="bg-black/40 border border-red-500/30 rounded-xl p-4 mb-6">
-            <p class="text-xs font-mono text-red-400 break-words">{{ error_details }}</p>
+        <div id="error-box" class="bg-black/40 border border-red-500/30 rounded-xl p-4 mb-6 {% if not error_details %}hidden{% endif %}">
+            <p class="text-[11px] uppercase tracking-wider font-bold text-red-300 mb-1">Classified Connection Error</p>
+            <p id="error-text" class="text-xs font-mono text-red-400 break-words">{{ error_details or 'Database is not connected.' }}</p>
         </div>
-        {% endif %}
 
+        {% set cat = error_category or 'network_access' %}
         <div class="bg-surface/80 border border-glass rounded-2xl p-6 mb-8 space-y-4">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-white">How to fix this in MongoDB Atlas:</h2>
-            <ol class="space-y-3 text-xs md:text-sm text-dim list-decimal list-inside leading-relaxed">
-                <li>Log in to your <a href="https://cloud.mongodb.com" target="_blank" class="text-accent underline font-medium">MongoDB Atlas Console</a>.</li>
-                <li>In the left sidebar under <strong>Security</strong>, click <strong>Network Access</strong>.</li>
-                <li>Click the green <strong>"Add IP Address"</strong> button.</li>
-                <li>Choose <strong>"Add Current IP Address"</strong> (or select <em>"Allow Access From Anywhere (0.0.0.0/0)"</em> for testing).</li>
-                <li>Click <strong>Confirm</strong> and wait ~1 minute for Atlas to update your firewall rule.</li>
-                <li>Verify your <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">MONGODB_URI</code> in <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">.env</code> is formatted correctly.</li>
-            </ol>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-white">Matching Fix Steps:</h2>
+
+            {% if cat == 'auth' or 'authentication' in (error_details or '')|lower or 'password' in (error_details or '')|lower or 'invalid_uri' == cat %}
+            <div class="space-y-2 text-xs md:text-sm text-dim">
+                <p class="text-white font-semibold">🔐 Password Encoding &amp; Database User Credentials</p>
+                <ol class="space-y-2 list-decimal list-inside leading-relaxed">
+                    <li>In <a href="https://cloud.mongodb.com" target="_blank" class="text-accent underline font-medium">MongoDB Atlas</a>, open <strong>Security &rarr; Database Access</strong> and verify your database username and password.</li>
+                    <li>Make sure you replaced placeholders like <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">&lt;password&gt;</code> in <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">.env</code> with your real password.</li>
+                    <li>If your password contains special characters (<code class="bg-white/10 px-1 py-0.5 rounded text-white font-mono">@ : / ? # [ ] %</code>), URL-encode it with Python:
+                        <code class="block mt-1 bg-black/40 p-2 rounded text-emerald-300 font-mono text-xs">python -c "import urllib.parse; print(urllib.parse.quote_plus('YOUR_PASSWORD'))"</code>
+                    </li>
+                </ol>
+            </div>
+            {% elif cat == 'dns_srv' or 'srv' in (error_details or '')|lower or 'dns' in (error_details or '')|lower %}
+            <div class="space-y-2 text-xs md:text-sm text-dim">
+                <p class="text-white font-semibold">🌐 DNS SRV Lookup Resolution</p>
+                <ol class="space-y-2 list-decimal list-inside leading-relaxed">
+                    <li>Your network or ISP DNS server failed to resolve the <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">mongodb+srv://</code> record.</li>
+                    <li>Set <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">MONGODB_DNS_SERVERS=8.8.8.8,1.1.1.1</code> in <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">.env</code> or change your Windows adapter DNS to Google (<code class="text-white font-mono">8.8.8.8</code>) / Cloudflare (<code class="text-white font-mono">1.1.1.1</code>).</li>
+                    <li>Alternatively, in Atlas click <strong>Connect &rarr; Drivers</strong> and copy the <strong>standard (non-SRV) connection string</strong> (<code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">mongodb://host1:27017,host2:27017,...</code>).</li>
+                </ol>
+            </div>
+            {% elif cat == 'tls' or 'tls' in (error_details or '')|lower or 'certificate' in (error_details or '')|lower %}
+            <div class="space-y-2 text-xs md:text-sm text-dim">
+                <p class="text-white font-semibold">🛡️ TLS / SSL Certificate Handshake</p>
+                <ol class="space-y-2 list-decimal list-inside leading-relaxed">
+                    <li>Ensure the <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">certifi</code> package is installed and up to date (<code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">pip install -U certifi</code>).</li>
+                    <li>Check that your system clock/date is accurate and no antivirus or corporate proxy is intercepting TLS traffic on port 27017.</li>
+                </ol>
+            </div>
+            {% else %}
+            <div class="space-y-2 text-xs md:text-sm text-dim">
+                <p class="text-white font-semibold">🛡️ Atlas Network Access IP Whitelist</p>
+                <ol class="space-y-2 list-decimal list-inside leading-relaxed">
+                    <li>Log in to your <a href="https://cloud.mongodb.com" target="_blank" class="text-accent underline font-medium">MongoDB Atlas Console</a>.</li>
+                    <li>In the left sidebar under <strong>Security</strong>, click <strong>Network Access</strong>.</li>
+                    <li>Click the green <strong>"Add IP Address"</strong> button and choose <strong>"Add Current IP Address"</strong> (or <code class="bg-white/10 px-1.5 py-0.5 rounded text-white font-mono">0.0.0.0/0</code> for testing).</li>
+                    <li>Click <strong>Confirm</strong> and wait ~30–60 seconds for Atlas to deploy the firewall rule.</li>
+                </ol>
+            </div>
+            {% endif %}
+
+            <details class="pt-2 border-t border-glass text-xs text-dim">
+                <summary class="cursor-pointer hover:text-white font-semibold">Show all troubleshooting checklists (Network Access IP, Password Encoding, DNS, TLS)</summary>
+                <ul class="mt-3 space-y-2 list-disc list-inside leading-relaxed">
+                    <li><strong>Network Access IP list:</strong> Add your current public IP in Atlas &rarr; Security &rarr; Network Access, and ensure outbound TCP port <code class="text-white font-mono">27017</code> is open.</li>
+                    <li><strong>Password encoding:</strong> URL-encode special characters (<code class="text-white font-mono">@ : / ? # [ ] %</code>) using <code class="text-white font-mono">urllib.parse.quote_plus</code> and remove <code class="text-white font-mono">&lt;password&gt;</code> angle brackets.</li>
+                    <li><strong>DNS SRV lookup:</strong> Use <code class="text-white font-mono">MONGODB_DNS_SERVERS=8.8.8.8,1.1.1.1</code> or switch to a standard <code class="text-white font-mono">mongodb://</code> connection string.</li>
+                    <li><strong>TLS certificates:</strong> Verify <code class="text-white font-mono">certifi</code> is installed and run <code class="text-white font-mono">check_atlas.bat</code> for a full step-by-step diagnostic report.</li>
+                </ul>
+            </details>
         </div>
 
         <div class="flex flex-col sm:flex-row items-center gap-4">
-            <a href="/"
+            <button id="retry-btn" type="button" onclick="retryDatabaseConnection()"
                class="w-full sm:w-auto text-center px-6 py-3 rounded-xl font-semibold text-sm bg-primary hover:bg-primary-hover text-white shadow-lg transition duration-200">
                 🔄 Retry Connection
-            </a>
-            <span class="text-xs text-dim">
+            </button>
+            <span id="retry-status" class="text-xs text-dim">
                 Make sure your PC has an active internet connection.
             </span>
         </div>
     </div>
+
+    <script>
+        async function retryDatabaseConnection() {
+            const btn = document.getElementById('retry-btn');
+            const statusEl = document.getElementById('retry-status');
+            const errBox = document.getElementById('error-box');
+            const errText = document.getElementById('error-text');
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Connecting...';
+            statusEl.textContent = 'Testing MongoDB connection now...';
+
+            try {
+                const resp = await fetch('/api/db/retry', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin'
+                });
+                if (resp.status === 401 || resp.status === 307) {
+                    window.location.href = '/auth/login';
+                    return;
+                }
+                const data = await resp.json();
+                if (resp.ok && data.connected) {
+                    statusEl.textContent = 'Connected! Reloading dashboard...';
+                    window.location.reload();
+                    return;
+                }
+                if (data.detail) {
+                    errBox.classList.remove('hidden');
+                    errText.textContent = data.detail;
+                }
+                statusEl.textContent = 'Still unreachable. Check the fix steps above and try again.';
+            } catch (err) {
+                statusEl.textContent = 'Request failed: ' + err;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Retry Connection';
+            }
+        }
+    </script>
 </body>
 </html>

@@ -15,7 +15,7 @@
    - [Creating Bot with @BotFather](#1-creating-the-bot-with-botfather)
    - [Adding Bot as Channel Administrator](#2-adding-the-bot-as-channel-administrator)
    - [Testing Connection & Diagnosing Permissions](#3-diagnosing-channel-permissions)
-5. [MongoDB Atlas Setup & IP Whitelisting](#-mongodb-atlas-setup--ip-whitelisting)
+5. [MongoDB Atlas Setup](#-mongodb-atlas-setup)
 6. [Running the Application](#-running-the-application)
 7. [Core Features & Telegram Rules](#-core-features--telegram-rules)
    - [Paid Media Rules (sendPaidMedia)](#paid-media-rules)
@@ -45,7 +45,7 @@ StarPost Manager adheres to clean separation of concerns:
 - **MongoDB Atlas via Motor**: Fully asynchronous database storage with indexes.
 - **APScheduler**: Persistent AsyncIOScheduler reloading pending jobs across restarts.
 - **httpx**: Asynchronous HTTP client wrapping Telegram Bot API with automatic HTTP 429 exponential backoff.
-- **Pillow**: Automatic image validation, format normalization (JPG/PNG/WEBP), dimension scaling, and compression.
+- **Pillow + pypdfium2 + python-docx**: Automatic image validation, format normalization (JPG/PNG/WEBP), PDF page rendering, Word (.docx/.doc) document card conversion, text (.txt) slide generation, dimension scaling, and compression.
 
 ### Project Layout
 ```text
@@ -226,17 +226,43 @@ In the StarPost Manager dashboard:
 
 ---
 
-## 🍃 MongoDB Atlas Setup & IP Whitelisting
+## 🍃 MongoDB Atlas Setup
 
-1. Log in to [MongoDB Atlas Console](https://cloud.mongodb.com).
-2. Under **Security** in the left sidebar, click **Network Access**.
-3. Click **"Add IP Address"**.
-4. Choose **"Add Current IP Address"** to whitelist your home/office IP (or `0.0.0.0/0` for development).
-5. Under **Database**, click **Connect** -> **Drivers** (Python / Motor) and copy your connection string.
-6. Replace `<password>` with your database user password and paste into `.env` as `MONGODB_URI`.
+Follow these steps to configure **StarPost Manager** with a cloud **MongoDB Atlas** cluster and optionally migrate your existing local MongoDB data:
 
-> [!NOTE]
-> If your IP changes or MongoDB Atlas is unreachable, StarPost Manager displays a friendly setup guide explaining how to update your IP whitelist without crashing.
+1. **Create an M0 Cluster in a Nearby Region:**
+   - Sign in to the [MongoDB Atlas Console](https://cloud.mongodb.com) and click **Create Cluster**.
+   - Select the **M0 Free** tier, choose a cloud provider and a **region geographically close to you** (for lower latency), and click **Create Deployment**.
+2. **Create a Database User:**
+   - Under **Security &rarr; Database Access**, click **Add New Database User**.
+   - Choose **Password** authentication, enter a username (e.g., `starpost_admin`) and a strong password, and grant **Read and write to any database** (`readWriteAnyDatabase`).
+3. **Add Your IP to Network Access:**
+   - Under **Security &rarr; Network Access**, click **Add IP Address**.
+   - Click **Add Current IP Address** (or `0.0.0.0/0` if your ISP changes your IP frequently) and click **Confirm**.
+4. **Copy the Connection URI & URL-Encode Your Password:**
+   - Go to **Database &rarr; Connect &rarr; Drivers**, select **Python**, and copy the `mongodb+srv://...` URI.
+   - If your password contains special characters (`@ : / ? # [ ] %`), URL-encode it first:
+     ```powershell
+     .\venv\Scripts\python.exe -c "import urllib.parse; print(urllib.parse.quote_plus('YOUR_PASSWORD'))"
+     ```
+   - Paste the URI into `.env` as `MONGODB_URI` (replacing `<password>` with your URL-encoded password) and set `DB_NAME=starpost`.
+5. **Run `check_atlas.bat`:**
+   - Double-click `check_atlas.bat` (or run `.\check_atlas.bat` in terminal) to verify URI parsing, DNS SRV resolution, TCP port 27017 reachability, TLS handshake with `certifi`, authentication, ping latency, collection counts, and `_healthcheck` read/write/delete.
+6. **Run `migrate_to_atlas.bat` (Optional — if migrating from local MongoDB):**
+   - Double-click `migrate_to_atlas.bat`. It first runs a **dry-run** and duplicate check showing what would be copied from `mongodb://localhost:27017/starpost`, then asks for confirmation before running `--apply`.
+   - Note: Uploaded photos in `media/` remain on your PC.
+7. **Start `run.bat`:**
+   - Launch `run.bat` to start StarPost Manager connected to MongoDB Atlas. If the database is ever temporarily unreachable, the app starts in degraded mode and automatically reconnects in the background every `DB_RECONNECT_INTERVAL_SECONDS` (30s).
+
+### Atlas Troubleshooting Table
+
+| Issue / Symptom | Common Cause | How to Fix |
+| :--- | :--- | :--- |
+| **IP not allowed** (`ServerSelectionTimeoutError` / timed out) | Your current public IP is not on the Atlas IP Access List, or outbound port `27017` is blocked. | In Atlas &rarr; **Security &rarr; Network Access**, click **Add IP Address &rarr; Add Current IP Address** and wait ~60 seconds. |
+| **Bad auth** (`Authentication failed`, code `8000` / `18`) | Wrong database username/password, `<password>` placeholder left in `.env`, or unescaped special characters. | Verify credentials in Atlas &rarr; **Database Access** (not your Atlas login email) and URL-encode the password with `urllib.parse.quote_plus`. |
+| **DNS SRV failure** (`ConfigurationError`, `_mongodb._tcp` timeout) | Your router or ISP DNS server blocks or times out on `SRV` / `TXT` lookups. | Keep `MONGODB_DNS_SERVERS=8.8.8.8,1.1.1.1` in `.env`, set Windows DNS to `8.8.8.8`, or use the **standard (non-SRV)** `mongodb://host1:27017,host2:27017,...` string from Atlas. |
+| **TLS certificate error** (`SSL: CERTIFICATE_VERIFY_FAILED`) | Outdated CA certificates, system clock skew, or antivirus HTTPS/TLS inspection. | Run `.\venv\Scripts\python.exe -m pip install -U certifi`, verify your Windows system date/time, and exclude port `27017` from antivirus SSL scanning. |
+| **Timeout** (`Connection timeout`) | High network latency, VPN/firewall blocking port `27017`, or paused M0 cluster. | Check if the M0 cluster is paused in the Atlas UI (click **Resume**), or increase `MONGODB_SERVER_SELECTION_TIMEOUT_MS` and `MONGODB_CONNECT_TIMEOUT_MS` in `.env`. |
 
 ---
 

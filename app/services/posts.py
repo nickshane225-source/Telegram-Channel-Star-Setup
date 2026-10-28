@@ -13,6 +13,7 @@ from app.services.telegram import (
     TelegramAPIError,
     TelegramAuthError,
     TelegramPermissionError,
+    normalize_channel_id,
     telegram_service,
 )
 from app.utils.sanitizer import sanitize_telegram_html
@@ -46,7 +47,7 @@ class PostService:
     ) -> PostModel:
         """Create a new post in database."""
         app_settings = await settings_repo.get_settings()
-        target_channel = channel_id or app_settings.channel_id or settings.TELEGRAM_CHANNEL_ID
+        target_channel = normalize_channel_id(channel_id or app_settings.channel_id or settings.TELEGRAM_CHANNEL_ID)
 
         # Mode A validation: max 9 real photos if card mode
         real_photos = [p for p in photos if not p.is_text_card]
@@ -86,10 +87,18 @@ class PostService:
             raise ValueError("Post cannot be published without at least 1 photo.")
 
         app_settings = await settings_repo.get_settings()
-        channel = post.channel_id or app_settings.channel_id or settings.TELEGRAM_CHANNEL_ID
+        channel = normalize_channel_id(post.channel_id or app_settings.channel_id or settings.TELEGRAM_CHANNEL_ID)
 
         if not channel:
             raise ValueError("No channel configured. Please configure your Telegram Channel ID in Settings.")
+
+        # Atomically claim the post before sending to Telegram
+        if hasattr(self.repo, "claim_for_publish"):
+            claimed = await self.repo.claim_for_publish(post.id)
+            if not claimed:
+                logger.info(f"Post {post.id} is already being published (or already published/deleted), skipping.")
+                return await self.get_post_or_404(post.id)
+            post = claimed
 
         # Prepare caption with default footer if configured
         final_caption = post.caption
@@ -154,6 +163,7 @@ class PostService:
                         "channel_id": channel,
                         "error": None,
                         "retry_count": 0,
+                        "publish_lock_until": None,
                     }
                 )
 
@@ -232,6 +242,7 @@ class PostService:
                         "photos": [p.model_dump() for p in updated_photos],
                         "error": None,
                         "retry_count": 0,
+                        "publish_lock_until": None,
                     }
                 )
 
@@ -281,6 +292,7 @@ class PostService:
                         "photos": [p.model_dump() for p in updated_photos],
                         "error": None,
                         "retry_count": 0,
+                        "publish_lock_until": None,
                     }
                 )
 
@@ -306,6 +318,7 @@ class PostService:
                     "retry_count": new_retry_count,
                     "error": error_msg,
                     "status": new_status,
+                    "publish_lock_until": None,
                 }
             )
 

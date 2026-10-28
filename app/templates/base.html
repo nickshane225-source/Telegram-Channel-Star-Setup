@@ -169,6 +169,13 @@
                 <p class="text-xs text-dim">{% block header_subtitle %}Telegram Paid Media Automation Dashboard{% endblock %}</p>
             </div>
             <div class="flex items-center gap-3">
+                <!-- Database Status Pill -->
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-glass text-xs" title="MongoDB Connection Status">
+                    <span class="w-2 h-2 rounded-full {% if db_status != 'reconnecting' %}bg-emerald-400{% else %}bg-amber-400 animate-pulse{% endif %}"></span>
+                    <span class="text-dim">DB:</span>
+                    <span class="{% if db_status != 'reconnecting' %}text-emerald-300 font-semibold{% else %}text-amber-300 font-semibold{% endif %}">{{ db_status or 'connected' }}</span>
+                </div>
+
                 <!-- Bot Listener Status Pill -->
                 <a href="/settings" class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-glass text-xs hover:bg-white/10 transition" title="Mode B Background Worker">
                     <span class="w-2 h-2 rounded-full {% if bot_listener_status == 'running' %}bg-emerald-400 animate-pulse{% else %}bg-slate-500{% endif %}"></span>

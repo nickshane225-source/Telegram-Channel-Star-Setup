@@ -72,6 +72,11 @@
                         <img src="/media-view/{{ p.path | basename }}"
                              alt="{{ post.title }}"
                              class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                        {% if p.source_type and p.source_type != 'photo' %}
+                        <div class="absolute top-2 right-2 bg-accent/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white font-mono font-bold uppercase shadow">
+                            {{ p.source_type }}
+                        </div>
+                        {% endif %}
                         <div class="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-[10px] text-white font-mono">
                             {{ p.width }}x{{ p.height }} • {{ (p.size_bytes / (1024*1024))|round(2) if p.size_bytes else '' }}MB
                         </div>

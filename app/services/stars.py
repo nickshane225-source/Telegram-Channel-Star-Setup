@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 from datetime import datetime
@@ -96,10 +97,12 @@ class StarsService:
 
     async def get_dashboard_stars_summary(self) -> Dict[str, Any]:
         """Summary metrics for the dashboard combining channel sales and bot purchases."""
-        total_sales = await self.repo.get_total_stars()
-        today_sales = await self.repo.get_stars_today()
-        total_purchases = await self.purchases_repo.get_total_stars()
-        today_purchases = await self.purchases_repo.get_stars_today()
+        total_sales, today_sales, total_purchases, today_purchases = await asyncio.gather(
+            self.repo.get_total_stars(),
+            self.repo.get_stars_today(),
+            self.purchases_repo.get_total_stars(),
+            self.purchases_repo.get_stars_today(),
+        )
         return {
             "total_stars": total_sales + total_purchases,
             "today_stars": today_sales + today_purchases,
@@ -107,8 +110,10 @@ class StarsService:
 
     async def get_chart_data(self, days: int = 30) -> Dict[str, Any]:
         """Daily breakdown for Chart.js chart combining channel sales and bot purchases."""
-        sales_chart = await self.repo.get_chart_data(days=days)
-        purchases_chart = await self.purchases_repo.get_chart_data(days=days)
+        sales_chart, purchases_chart = await asyncio.gather(
+            self.repo.get_chart_data(days=days),
+            self.purchases_repo.get_chart_data(days=days),
+        )
 
         labels = sales_chart.get("labels", [])
         sales_values = sales_chart.get("values", [0] * len(labels))

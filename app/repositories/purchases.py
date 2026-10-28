@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 from pymongo.errors import DuplicateKeyError
@@ -77,9 +78,10 @@ class PurchaseRepository:
 
         if search:
             # Match username or post_id or user_id
+            escaped_search = re.escape(search)
             search_conds: List[Dict[str, Any]] = [
-                {"username": {"$regex": search, "$options": "i"}},
-                {"post_id": {"$regex": search, "$options": "i"}},
+                {"username": {"$regex": escaped_search, "$options": "i"}},
+                {"post_id": {"$regex": escaped_search, "$options": "i"}},
             ]
             if search.isdigit():
                 search_conds.append({"user_id": int(search)})

@@ -20,6 +20,7 @@ class PostPhoto(BaseModel):
     height: Optional[int] = None
     size_bytes: Optional[int] = None
     is_text_card: bool = False
+    source_type: Optional[str] = "photo"
 
 
 class PostModel(BaseModel):
@@ -45,6 +46,7 @@ class PostModel(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     deleted_at: Optional[datetime] = None
+    publish_lock_until: Optional[datetime] = None
 
     @property
     def real_photos(self) -> List[PostPhoto]:

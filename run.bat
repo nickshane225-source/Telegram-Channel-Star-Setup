@@ -46,6 +46,17 @@ if not exist ".env" (
 )
 
 echo [INFO] Virtual environment active.
+
+:: Check if MONGODB_URI in .env still points to localhost or 127.0.0.1 (without printing the URI)
+if exist ".env" (
+    findstr /i /b "MONGODB_URI=" ".env" | findstr /i "localhost 127.0.0.1" >nul 2>&1
+    if !errorlevel! equ 0 (
+        echo [NOTICE] MONGODB_URI in .env is currently configured for local MongoDB ^(localhost / 127.0.0.1^).
+        echo          To switch to MongoDB Atlas, update MONGODB_URI in .env and run check_atlas.bat.
+        echo.
+    )
+)
+
 echo [INFO] Starting StarPost Manager on http://127.0.0.1:8000 ...
 echo.
 

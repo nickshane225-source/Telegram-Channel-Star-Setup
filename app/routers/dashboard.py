@@ -1,10 +1,11 @@
+import asyncio
 import os
 from pathlib import Path
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from jinja2 import Environment, FileSystemLoader
 from app.config import TEMPLATES_DIR, settings
-from app.db import get_db, get_db_error
+from app.db import get_db, get_db_error, get_db_error_category
 from app.plugins.manager import get_plugin_context
 from app.repositories.activity import activity_repo
 from app.repositories.posts import posts_repo
@@ -26,9 +27,12 @@ jinja_env.filters["to_timezone"] = lambda dt, tz="UTC", fmt="%b %d, %Y %H:%M": f
 
 async def get_base_context(request: Request, active_page: str = "dashboard"):
     """Prepare shared context variables across all dashboard pages."""
-    app_settings = await settings_repo.get_settings()
-    user = await auth_service.get_current_user_optional(request)
+    app_settings, user = await asyncio.gather(
+        settings_repo.get_settings(),
+        auth_service.get_current_user_optional(request),
+    )
     plugin_ctx = get_plugin_context()
+    db_connected = get_db() is not None
 
     return {
         "request": request,
@@ -36,6 +40,8 @@ async def get_base_context(request: Request, active_page: str = "dashboard"):
         "active_page": active_page,
         "current_theme": app_settings.theme or "midnight",
         "current_timezone": app_settings.timezone or "UTC",
+        "db_status": "connected" if db_connected else "reconnecting",
+        "db_connected": db_connected,
         "bot_listener_status": "running" if bot_listener.is_running else "stopped",
         "telegram_configured": bool(app_settings.bot_token and app_settings.channel_id),
         "active_channel": app_settings.channel_id,
@@ -50,16 +56,21 @@ async def dashboard_home(request: Request, user=Depends(auth_service.require_aut
     if get_db() is None:
         error_tmpl = jinja_env.get_template("error_db.html")
         return HTMLResponse(
-            error_tmpl.render(error_details=get_db_error()),
-            status_code=503
+            error_tmpl.render(
+                error_details=get_db_error(),
+                error_category=get_db_error_category() or "network_access",
+            ),
+            status_code=503,
         )
 
-    counts = await posts_repo.get_dashboard_counts()
-    recent_activity = await activity_repo.get_recent(limit=10)
-    next_scheduled = await posts_repo.get_next_scheduled(limit=5)
-    stars_summary = await stars_service.get_dashboard_stars_summary()
+    counts, recent_activity, next_scheduled, stars_summary, ctx = await asyncio.gather(
+        posts_repo.get_dashboard_counts(),
+        activity_repo.get_recent(limit=10),
+        posts_repo.get_next_scheduled(limit=5),
+        stars_service.get_dashboard_stars_summary(),
+        get_base_context(request, active_page="dashboard"),
+    )
 
-    ctx = await get_base_context(request, active_page="dashboard")
     ctx.update({
         "counts": counts,
         "recent_activity": recent_activity,

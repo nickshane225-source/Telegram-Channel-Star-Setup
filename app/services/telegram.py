@@ -268,9 +268,7 @@ class TelegramService:
                 opened_files.append(f)
                 files_dict[attach_name] = (path.name, f, "image/jpeg")
 
-            target_chat_id = str(chat_id)
-            if target_chat_id.startswith("@") or target_chat_id.startswith("-") or not target_chat_id.isdigit():
-                target_chat_id = normalize_channel_id(target_chat_id)
+            target_chat_id = normalize_channel_id(str(chat_id))
 
             form_data: Dict[str, Any] = {
                 "chat_id": target_chat_id,
@@ -314,9 +312,7 @@ class TelegramService:
         parse_mode: str = "HTML",
     ) -> bool:
         """Edit caption of an existing published message."""
-        target_chat = str(chat_id)
-        if target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
-            target_chat = normalize_channel_id(target_chat)
+        target_chat = normalize_channel_id(str(chat_id))
 
         data = {
             "chat_id": target_chat,
@@ -329,9 +325,7 @@ class TelegramService:
 
     async def delete_message(self, chat_id: Union[str, int], message_id: int) -> bool:
         """Delete message from the Telegram channel."""
-        target_chat = str(chat_id)
-        if target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
-            target_chat = normalize_channel_id(target_chat)
+        target_chat = normalize_channel_id(str(chat_id))
 
         data = {
             "chat_id": target_chat,
@@ -349,8 +343,8 @@ class TelegramService:
         protect_content: bool = False,
     ) -> Dict[str, Any]:
         """Send a text message (used for delivering hidden text or channel teaser button)."""
-        target_chat = str(chat_id)
-        if target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
+        target_chat = str(chat_id).strip()
+        if isinstance(chat_id, str) or target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
             target_chat = normalize_channel_id(target_chat)
 
         data: Dict[str, Any] = {
@@ -374,8 +368,8 @@ class TelegramService:
         reply_markup: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Send a single photo (used for Mode B channel teaser or user DM preview)."""
-        target_chat = str(chat_id)
-        if target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
+        target_chat = str(chat_id).strip()
+        if isinstance(chat_id, str) or target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
             target_chat = normalize_channel_id(target_chat)
 
         path = Path(photo_path)
@@ -401,8 +395,8 @@ class TelegramService:
         parse_mode: str = "HTML",
     ) -> List[Dict[str, Any]]:
         """Send multiple photos as an album (used for multiple teaser photos or resending purchased photos)."""
-        target_chat = str(chat_id)
-        if target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
+        target_chat = str(chat_id).strip()
+        if isinstance(chat_id, str) or target_chat.startswith("@") or target_chat.startswith("-") or not target_chat.isdigit():
             target_chat = normalize_channel_id(target_chat)
 
         media_array = []

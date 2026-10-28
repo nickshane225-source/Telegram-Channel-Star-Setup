@@ -99,14 +99,14 @@ async def create_post_action(
     processed_photos: List[PostPhoto] = []
     for f in photos:
         if f.filename:
-            photo = await media_service.save_and_process_upload(
+            photos_from_file = await media_service.save_and_process_file_upload(
                 upload_file=f,
                 apply_watermark_hook=watermark_hook
             )
-            processed_photos.append(photo)
+            processed_photos.extend(photos_from_file)
 
     if not processed_photos:
-        raise HTTPException(status_code=400, detail="At least one photo must be provided.")
+        raise HTTPException(status_code=400, detail="At least one photo or document must be provided.")
 
     app_settings = await settings_repo.get_settings()
     user_tz = app_settings.timezone or "UTC"
@@ -246,8 +246,8 @@ async def edit_post_action(
         new_photos = []
         for f in photos:
             if f.filename:
-                p = await media_service.save_and_process_upload(f)
-                new_photos.append(p)
+                photos_from_file = await media_service.save_and_process_file_upload(f)
+                new_photos.extend(photos_from_file)
         if new_photos:
             update_data["photos"] = [p.model_dump() for p in new_photos]
 
@@ -281,8 +281,8 @@ async def repost_action(
         new_photos = []
         for f in photos:
             if f.filename:
-                p = await media_service.save_and_process_upload(f)
-                new_photos.append(p)
+                photos_from_file = await media_service.save_and_process_file_upload(f)
+                new_photos.extend(photos_from_file)
 
     await post_service.delete_and_repost(
         post_id=post_id,

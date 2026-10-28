@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from typing import Any, Dict, Optional
 import httpx
 from loguru import logger
@@ -44,7 +45,7 @@ class BotListenerService:
         try:
             await db.bot_state.update_one(
                 {"key": "update_offset"},
-                {"$set": {"offset": offset, "updated_at": asyncio.get_event_loop().time()}},
+                {"$set": {"offset": offset, "updated_at": datetime.utcnow()}},
                 upsert=True
             )
         except Exception as exc:
@@ -55,7 +56,8 @@ class BotListenerService:
         if self.is_running:
             return
         self.is_running = True
-        self._task = asyncio.create_task(self._poll_loop())
+        loop = asyncio.get_running_loop()
+        self._task = loop.create_task(self._poll_loop())
         logger.info("Bot Listener background service started.")
 
     async def stop(self) -> None:
@@ -94,11 +96,10 @@ class BotListenerService:
 
                 for u in updates:
                     update_id = u.get("update_id")
+                    await self._process_single_update(u)
                     if update_id is not None:
                         self._offset = update_id + 1
                         await self.save_persisted_offset(self._offset)
-
-                    await self._process_single_update(u)
 
             except asyncio.CancelledError:
                 break

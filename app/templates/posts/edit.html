@@ -201,10 +201,10 @@
                 {% endif %}
 
                 <div>
-                    <label class="block text-xs font-semibold uppercase text-dim mb-1">Replace Photos (Optional)</label>
-                    <input type="file" name="photos" accept="image/*" multiple
+                    <label class="block text-xs font-semibold uppercase text-dim mb-1">Replace Media / Documents (Optional)</label>
+                    <input type="file" name="photos" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/msword,.doc,text/plain,.txt" multiple
                            class="w-full text-xs text-dim file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer">
-                    <p class="text-[11px] text-dim mt-1">Leave empty to keep existing photos.</p>
+                    <p class="text-[11px] text-dim mt-1">Supports JPG, PNG, WEBP, PDF, DOCX/DOC, TXT. Leave empty to keep existing media.</p>
                 </div>
 
                 <div class="pt-4 flex items-center justify-end gap-3 border-t border-glass">
@@ -326,9 +326,10 @@
             </div>
 
             <div class="pt-2 border-t border-glass">
-                <label class="block text-xs font-semibold uppercase text-dim mb-1">Add or Replace Photos</label>
-                <input type="file" name="photos" accept="image/*" multiple
+                <label class="block text-xs font-semibold uppercase text-dim mb-1">Add or Replace Photos / Documents</label>
+                <input type="file" name="photos" accept="image/jpeg,image/png,image/webp,application/pdf,.pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.docx,application/msword,.doc,text/plain,.txt" multiple
                        class="w-full text-xs text-dim file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white file:cursor-pointer">
+                <p class="text-[11px] text-dim mt-1">Supports JPG, PNG, WEBP, PDF, DOCX/DOC, TXT.</p>
             </div>
         {% endcall %}
 

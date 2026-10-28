@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import APIRouter, Depends, Request, Response, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from app.repositories.sales import sales_repo
@@ -12,11 +13,13 @@ router = APIRouter(prefix="/stats", tags=["Sales & Stats"])
 @router.get("", response_class=HTMLResponse)
 async def stats_index(request: Request, user=Depends(auth_service.require_auth)):
     """Render Sales & Stars financial dashboard."""
-    app_settings = await settings_repo.get_settings()
-    sales = await sales_repo.get_recent_sales(limit=100)
-    stars_summary = await stars_service.get_dashboard_stars_summary()
+    app_settings, sales, stars_summary, ctx = await asyncio.gather(
+        settings_repo.get_settings(),
+        sales_repo.get_recent_sales(limit=100),
+        stars_service.get_dashboard_stars_summary(),
+        get_base_context(request, active_page="stats"),
+    )
 
-    ctx = await get_base_context(request, active_page="stats")
     ctx.update({
         "sales": sales,
         "total_stars": stars_summary["total_stars"],

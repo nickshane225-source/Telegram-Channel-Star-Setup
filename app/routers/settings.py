@@ -7,7 +7,7 @@ from app.repositories.settings import settings_repo
 from app.routers.dashboard import get_base_context, jinja_env
 from app.services.auth import auth_service
 from app.services.bot_listener import bot_listener
-from app.services.telegram import telegram_service
+from app.services.telegram import normalize_channel_id, telegram_service
 from app.utils.security import get_security_warnings
 
 router = APIRouter(prefix="/settings", tags=["Settings"])
@@ -56,7 +56,7 @@ async def save_settings_action(
         update_data["bot_token"] = bot_token.strip()
         telegram_service.token = bot_token.strip()
     if channel_id and channel_id.strip():
-        update_data["channel_id"] = channel_id.strip()
+        update_data["channel_id"] = normalize_channel_id(channel_id.strip())
 
     await settings_repo.update_settings(update_data)
     return RedirectResponse(url="/settings", status_code=status.HTTP_303_SEE_OTHER)

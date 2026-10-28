@@ -6,6 +6,17 @@ from app.models.setting import SettingModel
 from app.repositories.base import serialize_doc
 
 
+def _normalize_channel(val: Optional[str]) -> str:
+    if not val:
+        return ""
+    s = str(val).strip()
+    if s.startswith("@") or s.startswith("-"):
+        return s
+    if s.isdigit():
+        return f"-{s}" if s.startswith("100") else f"-100{s}"
+    return s
+
+
 class SettingsRepository:
     """MongoDB repository for Application Settings."""
 
@@ -27,6 +38,8 @@ class SettingsRepository:
                     clean["bot_token"] = env_settings.TELEGRAM_BOT_TOKEN
                 if not clean.get("channel_id") and env_settings.TELEGRAM_CHANNEL_ID:
                     clean["channel_id"] = env_settings.TELEGRAM_CHANNEL_ID
+                if clean.get("channel_id"):
+                    clean["channel_id"] = _normalize_channel(clean["channel_id"])
                 return SettingModel(**clean)
         except Exception:
             pass
@@ -35,7 +48,7 @@ class SettingsRepository:
         return SettingModel(
             key="app_settings",
             bot_token=env_settings.TELEGRAM_BOT_TOKEN,
-            channel_id=env_settings.TELEGRAM_CHANNEL_ID,
+            channel_id=_normalize_channel(env_settings.TELEGRAM_CHANNEL_ID),
             default_price=env_settings.DEFAULT_STAR_PRICE,
             default_caption_footer=env_settings.DEFAULT_CAPTION_FOOTER,
             timezone=env_settings.DEFAULT_TIMEZONE,

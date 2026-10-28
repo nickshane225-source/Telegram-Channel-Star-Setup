@@ -27,6 +27,26 @@ class Settings(BaseSettings):
         description="MongoDB connection string (local or Atlas URI)"
     )
     DB_NAME: str = Field(default="starpost", description="Database name")
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: int = Field(
+        default=20000,
+        description="MongoDB server selection timeout in milliseconds"
+    )
+    MONGODB_CONNECT_TIMEOUT_MS: int = Field(
+        default=20000,
+        description="MongoDB connection timeout in milliseconds"
+    )
+    MONGODB_MAX_POOL_SIZE: int = Field(
+        default=20,
+        description="Maximum MongoDB connection pool size"
+    )
+    MONGODB_DNS_SERVERS: str = Field(
+        default="8.8.8.8,1.1.1.1",
+        description="Fallback DNS servers for SRV lookups"
+    )
+    DB_RECONNECT_INTERVAL_SECONDS: int = Field(
+        default=30,
+        description="Background reconnect interval in seconds when database is unreachable"
+    )
 
     # Security & Sessions
     SECRET_KEY: str = Field(
